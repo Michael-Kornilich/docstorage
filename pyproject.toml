@@ -1,7 +1,7 @@
 [project]
 name = "docstorage"
-version = "0.0.1"
-description = "A CLI tool for local CRUD operations on files"
+version = "0.1.0"
+description = "A local, fully-managed file storage CLI app"
 authors = [
     {name = "Michael Kornilich",email = "molego16@gmail.com"}
 ]
