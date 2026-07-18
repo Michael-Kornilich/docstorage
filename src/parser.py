@@ -139,33 +139,39 @@ def _add_filters(parser, *, include_dry_run=True):
     name_group = parser.add_mutually_exclusive_group()
     name_group.add_argument("name_positional", nargs="?", metavar="name", help="file name")
     name_group.add_argument("--name", "-n", dest="name_option", help="file name")
-    parser.add_argument("--id", type=int, default=None)
-    parser.add_argument("--description-contains", type=_limited_text, default=None, metavar="TEXT")
-    parser.add_argument("--date-created", "-dc", action=ParseDateRange, default=None, metavar="DATE[,...]")
-    parser.add_argument("--tags", "-t", action=UniqueCSV, default=[])
+    parser.add_argument("--id", type=int, default=None, help="file id. Use docstorage overview to learn them")
+    parser.add_argument("--description-contains", type=_limited_text, default=None, metavar="TEXT",
+                        help="string that the description must contain")
+    parser.add_argument("--date-created", "-dc", action=ParseDateRange, default=None, metavar="DATE | DATE RANGE",
+                        help="date formatted as YYYY-MM-DD or "
+                             "a date range formatted as {>|>=}YYYY-MM-DD,{<|<=}YYYY-MM-DD or {<|<=|>|>=|=}YYYY-MM-DD")
+    parser.add_argument("--tags", "-t", action=UniqueCSV, default=[], metavar="TAGS",
+                        help="a comma-separated list of tags. "
+                             "Such objects are returned that include at least one tag from the specified ones")
     if include_dry_run:
-        parser.add_argument("--dry-run", action="store_true", default=False)
+        parser.add_argument("--dry-run", action="store_true", default=False,
+                            help="do all the internal checks without actually executing the given command")
 
 
 arg_parser = _CLIArgumentParser(prog="docstorage", description="Local document storage")
 commands = arg_parser.add_subparsers(dest="command", required=True)
 
 import_parser = commands.add_parser("import", help="ingest a file")
-import_parser.add_argument("--description", "-de", type=_limited_text, default=None, metavar="TEXT")
+import_parser.add_argument("--description", "-de", type=_limited_text, default=None, metavar="TEXT", help="file description (max 300 characters)")
 import_parser.add_argument("--date-created", "-dc", action=ParseDate, default=date.today(), metavar="DATE")
 import_parser.add_argument("--tags", "-t", action=UniqueCSV, default=[])
 import_parser.add_argument("filepath", help="path to the file")
 
 fetch_parser = commands.add_parser("fetch", help="copy matching files to the landing directory")
 _add_filters(fetch_parser)
-fetch_parser.add_argument("--keep-existing", action="store_true", default=False)
+fetch_parser.add_argument("--keep-existing", action="store_true", default=False, help="keep the files in the landing directory. If the directory is not clean and the flag is not given - error.")
 
 overview_parser = commands.add_parser("overview", help="show a document overview")
 overview_parser.set_defaults(overview=True)
 
 delete_parser = commands.add_parser("delete", help="delete matching documents")
 _add_filters(delete_parser)
-delete_parser.add_argument("--all", "-a", action="store_true", default=False)
+delete_parser.add_argument("--all", "-a", action="store_true", default=False, help="permanently deletes all the files that match the criteria. Use with caution")
 
 healthcheck_parser = commands.add_parser("healthcheck", help="check stored file hashes")
 healthcheck_parser.set_defaults(healthcheck=True)
