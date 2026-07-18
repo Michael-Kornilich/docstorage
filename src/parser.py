@@ -42,8 +42,14 @@ class UniqueCSV(argparse.Action):
 
 
 class ParseDateRange(argparse.Action):
+    """Parses date range into a DateInterval object"""
+
     def __call__(self, parser, namespace, values, option_string=None):
-        if re.fullmatch(r"\d{4}-\d{2}-\d{2}", values):
+        # The single date handling must be also implemented as a part of ParseDateRange because delete and fetch
+        # allow both range and a singular date.
+        # And there is no clean way to invoke two separate objects as a single action
+        single_date_pattern = r"\d{4}-\d{2}-\d{2}"
+        if re.fullmatch(single_date_pattern, values):
             try:
                 parsed_date = date.fromisoformat(values)
             except ValueError as exc:
@@ -109,15 +115,16 @@ class ParseDate(argparse.Action):
 
 def _limited_text(value):
     if len(value) > 300:
-        raise argparse.ArgumentTypeError("must be at most 300 characters")
+        raise argparse.ArgumentTypeError(f"must be at most 300 characters, got {len(value)} characters")
     return value
 
 
 class _CLIArgumentParser(argparse.ArgumentParser):
-    """Normalize the two mutually-exclusive name forms after parsing."""
+    """Normalize the two mutually-exclusive name forms after parsing. Raise if both are provided"""
 
     def parse_args(self, args=None, namespace=None):
         parsed = super().parse_args(args, namespace)
+        # Argparse prevents both arguments provided upstream
         if hasattr(parsed, "name_positional") or hasattr(parsed, "name_option"):
             positional = getattr(parsed, "name_positional", None)
             option = getattr(parsed, "name_option", None)
@@ -128,6 +135,7 @@ class _CLIArgumentParser(argparse.ArgumentParser):
 
 
 def _add_filters(parser, *, include_dry_run=True):
+    """Helper function to add common filters"""
     name_group = parser.add_mutually_exclusive_group()
     name_group.add_argument("name_positional", nargs="?", metavar="name", help="file name")
     name_group.add_argument("--name", "-n", dest="name_option", help="file name")
