@@ -1,1 +1,4 @@
 # This is the entrypoint shell script
+export DB_PATH="/Users/Misha/Documents/Dev/projects/docstorage/volume/index/index.db"
+export STORAGE_PATH="/Users/Misha/Documents/Dev/projects/docstorage/volume/storage"
+poetry run python src/main.py
