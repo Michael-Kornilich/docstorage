@@ -1,4 +1,2 @@
 from parser import arg_parser
-
-namespace = arg_parser.parse_args()
-print(namespace)
+from db import resolve_db, import_file
