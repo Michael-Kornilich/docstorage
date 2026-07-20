@@ -16,6 +16,7 @@ def _get_db_path() -> tuple[Path, Path]:
     return Path(os.getenv("DB_PATH")), Path(os.getenv("STORAGE_PATH"))
 
 
+# Possible issue: odd paths leading outside the project are unhandled
 def resolve_db() -> None:
     """Create a new index or check the validity of the existing one. Raises if DB and storage paths are misspecified."""
 
@@ -39,7 +40,6 @@ def resolve_db() -> None:
         PRIMARY KEY (id, tag)
     )
     """.strip()
-    _internal_table = "CREATE TABLE sqlite_sequence(name,seq)"
 
     if not DB_PATH.exists():
         # Won't handle the case where the index does not exist, but files do or the other way around
@@ -50,17 +50,21 @@ def resolve_db() -> None:
             DB_PATH.touch()
         except FileNotFoundError:
             raise FileNotFoundError(f"Failed to create the index: bad path") from None
+        except Exception as err:
+            raise RuntimeError(f"An unexpected exception occured while creating index: "
+                               f"{type(err).__name__} - {err}") from err
 
         with sqlite3.connect(DB_PATH) as con:
             con.execute("PRAGMA foreign_keys = ON")
             con.execute(create_index_sql)
             con.execute(create_tags_sql)
     else:
-        # Won't handle the case of direct changes to the table since too complicated
+        # Assume existing DB scheme / data has not been tampered with. Check only for a valid file.
+        # Otherwise, handling is too complicated
         try:
             sqlite3.connect(DB_PATH).close()
         except Exception as err:
-            raise RecursionError(f"Corrupted index: {err}") from err
+            raise RecursionError(f"Corrupted index: {type(err).__name__} - {err}") from err
     return
 
 

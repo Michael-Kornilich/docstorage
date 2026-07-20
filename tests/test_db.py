@@ -1,3 +1,6 @@
+import os
+import sqlite3
+
 import pytest
 from pathlib import Path
 from src.db import resolve_db, import_file, _insert_uncommited
@@ -36,6 +39,13 @@ def setup_bad_db_environment(tmp_path, monkeypatch):
 class TestResolver:
     def test_first_start(self, setup_db_environment):
         resolve_db()
+
+        with sqlite3.connect(Path(os.environ["DB_PATH"])) as con:
+            tables = con.execute(
+                "SELECT name FROM sqlite_master WHERE type = 'table'"
+            ).fetchall()
+
+        assert {name for (name,) in tables} == {"index", "tags"}
 
     def test_valid_existing_db(self, setup_db_environment):
         resolve_db()
