@@ -160,7 +160,7 @@ import_parser = commands.add_parser("import", help="ingest a file")
 import_parser.add_argument("--description", "-de", type=_limited_text, default=None, metavar="TEXT", help="file description (max 300 characters)")
 import_parser.add_argument("--date-created", "-dc", action=ParseDate, default=date.today(), metavar="DATE")
 import_parser.add_argument("--tags", "-t", action=UniqueCSV, default=[])
-import_parser.add_argument("filepath", help="path to the file")
+import_parser.add_argument("source", help="path to the file")
 
 fetch_parser = commands.add_parser("fetch", help="copy matching files to the landing directory")
 _add_filters(fetch_parser)

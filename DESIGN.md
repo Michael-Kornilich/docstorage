@@ -94,7 +94,7 @@ Flags:
 - --tags | -t: accepts a comma-separated string. Optional: defaults to an empty list
 
 Positional arguments:
-- filepath: string. Does NOT check for validity (this is handeled by the main)
+- filepath: string. Ther parser does NOT check for validity (this is handeled by the main)
 
 **fetch**
 
