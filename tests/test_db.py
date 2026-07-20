@@ -1,11 +1,11 @@
 import os
 import sqlite3
-from difflib import restore
 
 import pytest
 from pathlib import Path
 from src.db import resolve_db, import_file, _insert_uncommited
 from datetime import date
+import subprocess
 
 
 @pytest.fixture
@@ -20,9 +20,9 @@ def setup_db_environment(tmp_path, monkeypatch):
     )
     monkeypatch.setenv(
         "STORAGE_PATH",
-        str(tmp_path / "volume" / "index" / "storage"),
+        str(tmp_path / "volume" / "storage"),
     )
-    yield
+    yield tmp_path / "volume"
 
 
 @pytest.fixture
@@ -35,7 +35,21 @@ def setup_bad_db_environment(tmp_path, monkeypatch):
         "STORAGE_PATH",
         str(tmp_path / "volume" / "index" / "storage"),
     )
-    yield
+    yield tmp_path / "volume"
+
+
+@pytest.fixture
+def setup_db(setup_db_environment):
+    resolve_db()
+    yield setup_db_environment
+
+
+@pytest.fixture
+def setup_files_to_move(tmp_path, monkeypatch):
+    root = "/Users/Misha/Documents/Dev/projects/docstorage"
+    for i in ["empty_file.pdf", "normal_file.pdf", "normal_file_duplicate.pdf"]:
+        subprocess.run(["cp", f"{root}/tests/volume/{i}", str(tmp_path / i)])
+    yield tmp_path
 
 
 class TestResolver:
@@ -53,6 +67,12 @@ class TestResolver:
         resolve_db()
         resolve_db()
 
+    def test_empty_existing_db(self, setup_db_environment):
+        volume_path = setup_db_environment
+        (volume_path / "index" / "index.db").touch()
+        with pytest.raises(RuntimeError):
+            resolve_db()
+
     def test_bad_path(self, setup_bad_db_environment):
         with pytest.raises(FileNotFoundError):
             resolve_db()
@@ -63,8 +83,7 @@ class TestResolver:
 
 
 class TestInserter:
-    def test_normal_insert(self, setup_db_environment):
-        resolve_db()
+    def test_normal_insert(self, setup_db):
         con = _insert_uncommited(
             "test.pdf",
             "4c2e9e6da31a64c70623619c449a040968cdbea85945bf384fa30ed2d5d24fa3",
@@ -75,8 +94,7 @@ class TestInserter:
         con.commit()
         con.close()
 
-    def test_duplicate_insert(self, setup_db_environment):
-        resolve_db()
+    def test_duplicate_insert(self, setup_db):
         con = _insert_uncommited(
             "test.pdf",
             "4c2e9e6da31a64c70623619c449a040968cdbea85945bf384fa30ed2d5d24fa3",
@@ -100,11 +118,34 @@ class TestInserter:
 
 
 class TestImporter:
-    def test_normal_import(self, setup_db_environment):
-        resolve_db()
+    def test_normal_import(self, setup_db, setup_files_to_move):
+        filepath = setup_files_to_move / "normal_file.pdf"
+        should_bytes = filepath.read_bytes()
+        import_file(filepath, "some description",
+                    date(2026, 1, 1), ["tag1", "tag2"])
 
-    def test_zero_bytes_import(self, setup_db_environment):
-        resolve_db()
+        assert list(Path(setup_db / "storage").iterdir()), "The file has not been moved"
 
-    def test_forbidden_import(self, setup_db_environment):
-        resolve_db()
+        internal_filepath: Path = list(Path(setup_db / "storage").iterdir())[0]
+        got_bytes = internal_filepath.read_bytes()
+
+        assert got_bytes == should_bytes, "Bytes mismatch"
+
+    def test_zero_bytes_import(self, setup_db, setup_files_to_move):
+        filepath = setup_files_to_move / "empty_file.pdf"
+        with pytest.raises(ImportError):
+            import_file(filepath, "some description",
+                        date(2026, 1, 1), ["tag1", "tag2"])
+
+    def test_forbidden_import(self, setup_db):
+        pass
+
+    def test_duplicate_import(self, setup_db, setup_files_to_move):
+        filepath = setup_files_to_move / "normal_file.pdf"
+        import_file(filepath, "some description",
+                    date(2026, 1, 1), ["tag1", "tag2"])
+
+        filepath = setup_files_to_move / "normal_file_duplicate.pdf"
+        with pytest.raises(ImportError):
+            import_file(filepath, "some description",
+                        date(2026, 1, 1), ["tag1", "tag2"])

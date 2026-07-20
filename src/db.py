@@ -1,4 +1,3 @@
-import os
 import sqlite3
 from pathlib import Path
 from datetime import date
@@ -21,6 +20,7 @@ def _get_db_path() -> tuple[Path, Path]:
 def resolve_db() -> None:
     """Create a new index or check the validity of the existing one. Raises if DB and storage paths are misspecified."""
 
+    # TODO: think about handling storage path
     DB_PATH, STORAGE_PATH = _get_db_path()
 
     # id: SQLite's specific alias for rowid. The primary key is automatically generated
@@ -66,6 +66,10 @@ def resolve_db() -> None:
             sqlite3.connect(DB_PATH).close()
         except Exception as err:
             raise RuntimeError(f"Corrupted index: {type(err).__name__} - {err}") from err
+
+        with open(DB_PATH, mode="rb") as f:
+            if len(f.read()) == 0:
+                raise RuntimeError(f"Corrupted index: no data available")
     return
 
 
@@ -82,7 +86,7 @@ def _insert_uncommited(
 ) -> sqlite3.Connection:
     """Helper function to insert the given data into index. Raises FileExistsError if the insert is duplicate"""
 
-    DB_PATH, STORAGE_PATH = _get_db_path()
+    DB_PATH, _ = _get_db_path()
 
     con = sqlite3.connect(DB_PATH, autocommit=False)
     con.execute("PRAGMA foreign_keys = ON")  # Turned off by default for backwards compatibility
@@ -115,17 +119,23 @@ def import_file(
 ) -> None:
     """Moves the specified file into the internal storage and adds and entry to the index"""
 
-    DB_PATH, STORAGE_PATH = _get_db_path()
+    _, STORAGE_PATH = _get_db_path()
 
     try:
         with open(source, mode="rb") as source_file:
             binary = source_file.read()
     except PermissionError as err:
-        raise RuntimeError("Cannot read the given file: not enough permissions.") from err
+        raise ImportError("Cannot read the given file: not enough permissions.") from err
+
+    if not binary:
+        raise ImportError("Cannot move empty files.")
 
     hexdigest = sha256(binary).hexdigest()
 
-    con = _insert_uncommited(source.name, hexdigest, description, date_created, tags)
+    try:
+        con = _insert_uncommited(source.name, hexdigest, description, date_created, tags)
+    except Exception as err:
+        raise ImportError(f"Could not update the index: {type(err).__name__} - {err}") from err
 
     with open(STORAGE_PATH / hexdigest, mode="wb") as target_file:
         target_file.write(binary)
@@ -135,13 +145,22 @@ def import_file(
     except PermissionError as err:
         Path(STORAGE_PATH / hexdigest).unlink()
         con.rollback()
-        raise RuntimeError("Cannot move the given file: not enough permissions.") from err
+        raise ImportError("Cannot move the given file: not enough permissions.") from err
     else:
         con.commit()
     finally:
         con.close()
 
     return
+
+
+def _drop_uncommited(id_: int) -> sqlite3.Connection:
+    """Helper function to drop the given id from the table. Raises FileExistsError if the insert is duplicate"""
+    DB_PATH, _ = _get_db_path()
+    con = sqlite3.connect(DB_PATH, autocommit=False)
+    con.execute("PRAGMA foreign_keys = ON")  # Turned off by default for backwards compatibility
+    con.execute("""DELETE FROM "index" WHERE id = ?""", (id_,))
+    return con
 
 # read - read an entry and serve the file into the landing directory
 # drop - remove an entry
