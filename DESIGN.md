@@ -131,3 +131,4 @@ Positional arguments:
 **healthcheck**
 No arguments are accepted. just a boolean value if invoked
 
+Testing: `poetry run python -m pytest -s`
