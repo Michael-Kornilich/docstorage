@@ -1,9 +1,11 @@
 import os
 import sqlite3
+from difflib import restore
 
 import pytest
 from pathlib import Path
 from src.db import resolve_db, import_file, _insert_uncommited
+from datetime import date
 
 
 @pytest.fixture
@@ -61,8 +63,48 @@ class TestResolver:
 
 
 class TestInserter:
-    pass
+    def test_normal_insert(self, setup_db_environment):
+        resolve_db()
+        con = _insert_uncommited(
+            "test.pdf",
+            "4c2e9e6da31a64c70623619c449a040968cdbea85945bf384fa30ed2d5d24fa3",
+            "This is a test file.",
+            date(2026, 1, 1),
+            ["test", "tag", "tag2"]
+        )
+        con.commit()
+        con.close()
+
+    def test_duplicate_insert(self, setup_db_environment):
+        resolve_db()
+        con = _insert_uncommited(
+            "test.pdf",
+            "4c2e9e6da31a64c70623619c449a040968cdbea85945bf384fa30ed2d5d24fa3",
+            "This is a test file.",
+            date(2026, 1, 1),
+            ["test", "tag", "tag2"]
+        )
+        con.commit()
+        con.close()
+
+        with pytest.raises(FileExistsError):
+            con = _insert_uncommited(
+                "test.pdf",
+                "4c2e9e6da31a64c70623619c449a040968cdbea85945bf384fa30ed2d5d24fa3",
+                "This is a test file.",
+                date(2026, 1, 1),
+                ["test", "tag", "tag2"]
+            )
+            con.commit()
+            con.close()
 
 
 class TestImporter:
-    pass
+    def test_normal_import(self, setup_db_environment):
+        resolve_db()
+
+    def test_zero_bytes_import(self, setup_db_environment):
+        resolve_db()
+
+    def test_forbidden_import(self, setup_db_environment):
+        resolve_db()

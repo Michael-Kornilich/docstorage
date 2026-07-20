@@ -1,3 +1,4 @@
+import os
 import sqlite3
 from pathlib import Path
 from datetime import date
@@ -26,7 +27,7 @@ def resolve_db() -> None:
     create_index_sql = """
     CREATE TABLE "index" (
         id INTEGER PRIMARY KEY,
-        sha256 TEXT NOT NULL,
+        sha256 TEXT NOT NULL UNIQUE,
         name TEXT NOT NULL,
         description TEXT NOT NULL,
         date_created TEXT NOT NULL,
@@ -64,7 +65,7 @@ def resolve_db() -> None:
         try:
             sqlite3.connect(DB_PATH).close()
         except Exception as err:
-            raise RecursionError(f"Corrupted index: {type(err).__name__} - {err}") from err
+            raise RuntimeError(f"Corrupted index: {type(err).__name__} - {err}") from err
     return
 
 
@@ -86,17 +87,17 @@ def _insert_uncommited(
     con = sqlite3.connect(DB_PATH, autocommit=False)
     con.execute("PRAGMA foreign_keys = ON")  # Turned off by default for backwards compatibility
 
-    res = con.execute("""SELECT id, sha256 FROM "index" """).fetchall()
-    for id_, hash_ in res:
-        if hash_ == hexdigest:
-            raise FileExistsError(f"The given file already exists in the database under id '{id_}'")
-
     insert_sql = """
         INSERT INTO "index" (sha256, name, description, date_created) 
         VALUES  (?, ?, ?, ?)
         """
     params = (hexdigest, name, description, date_created.isoformat())
-    cursor = con.execute(insert_sql, params)
+
+    try:
+        cursor = con.execute(insert_sql, params)
+    except sqlite3.IntegrityError as err:
+        raise FileExistsError(f"The given file already exists in the database.") from err
+
     index_id = cursor.lastrowid
 
     con.executemany(
@@ -116,25 +117,31 @@ def import_file(
 
     DB_PATH, STORAGE_PATH = _get_db_path()
 
-    if not DB_PATH.exists():
-        raise FileNotFoundError("The index does not exist. "
-                                "Run resolve_db() to init the database or docstorage healthcheck to check the health")
+    try:
+        with open(source, mode="rb") as source_file:
+            binary = source_file.read()
+    except PermissionError as err:
+        raise RuntimeError("Cannot read the given file: not enough permissions.") from err
 
-    with open(source, mode="rb") as source_file:
-        binary = source_file.read()
-    source_hash = sha256(binary).hexdigest()
+    hexdigest = sha256(binary).hexdigest()
 
-    con = _insert_uncommited(source.name, source_hash, description, date_created, tags)
+    con = _insert_uncommited(source.name, hexdigest, description, date_created, tags)
 
-    with open(STORAGE_PATH / source_hash, mode="wb") as target_file:
+    with open(STORAGE_PATH / hexdigest, mode="wb") as target_file:
         target_file.write(binary)
 
-    con.commit()
-    con.close()
-    source.unlink()
-    return
+    try:
+        source.unlink()
+    except PermissionError as err:
+        Path(STORAGE_PATH / hexdigest).unlink()
+        con.rollback()
+        raise RuntimeError("Cannot move the given file: not enough permissions.") from err
+    else:
+        con.commit()
+    finally:
+        con.close()
 
-# TODO: test both functions
+    return
 
 # read - read an entry and serve the file into the landing directory
 # drop - remove an entry
