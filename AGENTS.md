@@ -2,7 +2,7 @@
 
 ### Run
 
-The `src/docstorage` is the entrypoint to the app
+The `src/docstorage` is the entrypoint to the app. 
 Hence, run with `sh src/docstorage <args>`
 
 ### Test
