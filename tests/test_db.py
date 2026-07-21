@@ -3,16 +3,15 @@ import sqlite3
 
 import pytest
 from pathlib import Path
-from src.db import resolve_db, import_file, _insert_uncommited
+from src.db import resolve_db, import_file, _prepare_insert, _prepare_drop
 from datetime import date
 import subprocess
 
 
 @pytest.fixture
 def setup_db_environment(tmp_path, monkeypatch):
-    Path.mkdir(tmp_path / "volume")
-    Path.mkdir(tmp_path / "volume" / "index")
-    Path.mkdir(tmp_path / "volume" / "storage")
+    """Yields path to the volume"""
+    subprocess.run(["mkdir", "-p", f"{tmp_path}/volume/index", f"{tmp_path}/volume/storage"])
 
     monkeypatch.setenv(
         "DB_PATH",
@@ -40,6 +39,7 @@ def setup_bad_db_environment(tmp_path, monkeypatch):
 
 @pytest.fixture
 def setup_db(setup_db_environment):
+    """Yields path to the volume/"""
     resolve_db()
     yield setup_db_environment
 
@@ -52,7 +52,7 @@ def setup_files_to_move(tmp_path, monkeypatch):
     yield tmp_path
 
 
-class TestResolver:
+class TestResolve:
     def test_first_start(self, setup_db_environment):
         resolve_db()
 
@@ -82,9 +82,9 @@ class TestResolver:
             resolve_db()
 
 
-class TestInserter:
+class TestInsert:
     def test_normal_insert(self, setup_db):
-        con = _insert_uncommited(
+        con = _prepare_insert(
             "test.pdf",
             "4c2e9e6da31a64c70623619c449a040968cdbea85945bf384fa30ed2d5d24fa3",
             "This is a test file.",
@@ -95,7 +95,7 @@ class TestInserter:
         con.close()
 
     def test_duplicate_insert(self, setup_db):
-        con = _insert_uncommited(
+        con = _prepare_insert(
             "test.pdf",
             "4c2e9e6da31a64c70623619c449a040968cdbea85945bf384fa30ed2d5d24fa3",
             "This is a test file.",
@@ -105,8 +105,8 @@ class TestInserter:
         con.commit()
         con.close()
 
-        with pytest.raises(FileExistsError):
-            con = _insert_uncommited(
+        with pytest.raises(RuntimeError):
+            con = _prepare_insert(
                 "test.pdf",
                 "4c2e9e6da31a64c70623619c449a040968cdbea85945bf384fa30ed2d5d24fa3",
                 "This is a test file.",
@@ -116,8 +116,20 @@ class TestInserter:
             con.commit()
             con.close()
 
+    def test_duplicate_tags(self, setup_db):
+        with pytest.raises(RuntimeError):
+            con = _prepare_insert(
+                "test.pdf",
+                "4c2e9e6da31a64c70623619c449a040968cdbea85945bf384fa30ed2d5d24fa3",
+                "This is a test file.",
+                date(2026, 1, 1),
+                ["tag", "tag"]
+            )
+            con.commit()
+            con.close()
 
-class TestImporter:
+
+class TestImport:
     def test_normal_import(self, setup_db, setup_files_to_move):
         filepath = setup_files_to_move / "normal_file.pdf"
         should_bytes = filepath.read_bytes()
@@ -149,3 +161,22 @@ class TestImporter:
         with pytest.raises(ImportError):
             import_file(filepath, "some description",
                         date(2026, 1, 1), ["tag1", "tag2"])
+
+
+class TestDelete:
+    def test_normal_drop(self, setup_db, setup_files_to_move):
+        import_file(setup_files_to_move / "normal_file.pdf", "Some description",
+                    date(2026, 1, 1), ["tag1", "tag2"])
+
+        con = _prepare_drop(1)
+        con.commit()
+        con.close()
+
+        assert not list(Path(setup_db / "storage").iterdir())
+        # Add the check that the db is empty
+
+    def test_missing_drop(self, setup_db):
+        with pytest.raises(Exception):
+            con = _prepare_drop(1)
+            con.commit()
+            con.close()
