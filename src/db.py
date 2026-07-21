@@ -77,14 +77,18 @@ def resolve_db() -> None:
 # Everything below assumes a valid DB #
 #######################################
 
-def _insert_uncommited(
+def _prepare_insert(
         name: str,
         hexdigest: str,
         description: str,
         date_created: date,
         tags: Sequence[str],
 ) -> sqlite3.Connection:
-    """Helper function to insert the given data into index. Raises FileExistsError if the insert is duplicate"""
+    """
+    Helper function to insert the given data into index.
+    Does not commit the transaction, hence prepare_insert.
+    Raises FileExistsError if the insert is duplicate
+    """
 
     DB_PATH, _ = _get_db_path()
 
@@ -99,15 +103,14 @@ def _insert_uncommited(
 
     try:
         cursor = con.execute(insert_sql, params)
-    except sqlite3.IntegrityError as err:
-        raise FileExistsError(f"The given file already exists in the database.") from err
+        index_id = cursor.lastrowid
+        con.executemany(
+            """INSERT INTO tags (id, tag) VALUES (?, ?)""",
+            [(index_id, tag) for tag in tags]
+        )
+    except Exception as err:
+        raise RuntimeError(f"Could not insert the given data: {type(err).__name__} - {err}") from err
 
-    index_id = cursor.lastrowid
-
-    con.executemany(
-        """INSERT INTO tags (id, tag) VALUES (?, ?)""",
-        [(index_id, tag) for tag in tags]
-    )
     return con
 
 
@@ -133,7 +136,7 @@ def import_file(
     hexdigest = sha256(binary).hexdigest()
 
     try:
-        con = _insert_uncommited(source.name, hexdigest, description, date_created, tags)
+        con = _prepare_insert(source.name, hexdigest, description, date_created, tags)
     except Exception as err:
         raise ImportError(f"Could not update the index: {type(err).__name__} - {err}") from err
 
@@ -154,8 +157,12 @@ def import_file(
     return
 
 
-def _drop_uncommited(id_: int) -> sqlite3.Connection:
-    """Helper function to drop the given id from the table. Raises FileExistsError if the insert is duplicate"""
+def _prepare_drop(id_: int) -> sqlite3.Connection:
+    """
+    Helper function to drop the given id from the table.
+    Does not commit the drop, hence the name.
+    Raises FileExistsError if the insert is duplicate
+    """
     DB_PATH, _ = _get_db_path()
     con = sqlite3.connect(DB_PATH, autocommit=False)
     con.execute("PRAGMA foreign_keys = ON")  # Turned off by default for backwards compatibility
