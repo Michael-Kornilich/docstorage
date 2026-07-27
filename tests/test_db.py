@@ -89,7 +89,7 @@ class TestResolve:
             resolve_db()
 
 
-class TestInsert:
+class TestHelperInsert:
     def test_normal_insert(self, setup_db):
         con = _prepare_insert(
             "test.pdf",
@@ -100,6 +100,7 @@ class TestInsert:
         )
         con.commit()
         con.close()
+        # TODO: assert internal state
 
     def test_duplicate_insert(self, setup_db):
         con = _prepare_insert(
@@ -172,7 +173,7 @@ class TestImport:
     # Missing file and directory will not be tested here
 
 
-class TestDrop:
+class TestHelperDrop:
     def test_normal_drop(self, setup_db, setup_files_to_move):
         import_file(setup_files_to_move / "normal_file.pdf", "Some description",
                     date(2026, 1, 1), ["tag1", "tag2"])
@@ -189,6 +190,14 @@ class TestDrop:
     def test_missing_drop(self, setup_db):
         with pytest.raises(IndexError):
             _prepare_drop(1)
+
+
+class TestWhereBuilder:
+    def test_normal_inputs(self):
+        pass
+
+    def test_only_id(self):
+        pass
 
 
 class TestDelete:

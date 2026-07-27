@@ -1,4 +1,5 @@
 import sqlite3
+from utility import DateInterval
 from pathlib import Path
 from datetime import date
 from typing import Sequence
@@ -20,7 +21,6 @@ def _get_db_vars() -> tuple[Path, Path]:
 def resolve_db() -> None:
     """Create a new index or check the validity of the existing one. Raises if DB and storage paths are misspecified."""
 
-    # TODO: think about handling storage path
     DB_PATH, STORAGE_PATH = _get_db_vars()
 
     # id: SQLite's specific alias for rowid. The primary key is automatically generated
@@ -75,10 +75,13 @@ def resolve_db() -> None:
     return
 
 
-#######################################
 # Everything below assumes a valid DB #
-#######################################
 
+# healthcheck - checks to what extent the index and the storage agree
+
+# --------------------------------------
+# ------ Import related functions ------
+# --------------------------------------
 def _prepare_insert(
         name: str,
         hexdigest: str,
@@ -112,6 +115,8 @@ def _prepare_insert(
             [(index_id, tag) for tag in tags]
         )
     except Exception as err:
+        con.rollback()
+        con.close()
         raise RuntimeError(f"Could not insert the given data: {type(err).__name__} - {err}") from err
 
     return con
@@ -163,6 +168,15 @@ def import_file(
     return
 
 
+# --------------------------------------
+# ------ Fetch related functions -------
+# --------------------------------------
+
+# read - read an entry and serve the file into the landing directory
+
+# --------------------------------------
+# ------- Drop related functions -------
+# --------------------------------------
 def _prepare_drop(id_: int) -> sqlite3.Connection:
     """
     Helper function to drop the given id from the table.
@@ -177,10 +191,93 @@ def _prepare_drop(id_: int) -> sqlite3.Connection:
                          WHERE id = ?""", (id_,))
 
     if res.rowcount == 0:
+        con.rollback()
+        con.close()
         raise IndexError(f"Index does not exist: {id_}")
 
     return con
 
-# read - read an entry and serve the file into the landing directory
-# drop - remove an entry
-# healthcheck - checks to what extent the index and the storage agree
+
+def _build_where_restrictions(
+        id_: int,
+        name: str | None = None,
+        description_contains: str | None = None,
+        date_created: DateInterval | None = None,
+        date_added: DateInterval | None = None,
+        tags: Sequence[str] = (),
+) -> str:
+    """Helper function to build restriction for the WHERE clause"""
+    # TODO: think about SQL injections here
+
+    where_restrictions = [f"id = {id_}"]
+    if name:
+        where_restrictions.append(f"name = {name}")
+
+    if description_contains:
+        where_restrictions.append(f"description LIKE  %{description_contains}%")
+
+    if date_created:
+        lower_sign = ">" + "=" if date_created.include_lower else ""
+        upper_sign = "<" + "=" if date_created.include_upper else ""
+
+        where_restrictions.append(f"date_created {lower_sign} '{date_created.lower.isoformat()}'")
+        where_restrictions.append(f"date_created {upper_sign} '{date_created.upper.isoformat()}'")
+
+    if date_added:
+        lower_sign = ">" + "=" if date_added.include_lower else ""
+        upper_sign = "<" + "=" if date_added.include_upper else ""
+
+        where_restrictions.append(f"date_created {lower_sign} '{date_added.lower.isoformat()}'")
+        where_restrictions.append(f"date_created {upper_sign} '{date_added.upper.isoformat()}'")
+
+    if tags:
+        wrapped_tags = [f"'{tag}'" for tag in tags]
+        where_restrictions.append(f"tag in ({', '.join(wrapped_tags)})")
+
+    return ", and ".join(where_restrictions)
+
+
+def drop_file_set(
+        id_: int,
+        name: str | None = None,
+        description_contains: str | None = None,
+        date_created: DateInterval | None = None,
+        date_added: DateInterval | None = None,
+        tags: Sequence[str] = (),
+        dry_run: bool = True,
+) -> None | int:
+    """
+    Drop file that match ALL the specified parameters.
+    That is, if multiple files match the specified parameters, many are dropped.
+    dry_run: If true, do not drop any files, but return the number of potentially dropped files.
+    """
+    DB_PATH, STORAGE_PATH = _get_db_vars()
+
+    where_restrictions = _build_where_restrictions(id_, name, description_contains, date_created, date_added, tags)
+
+    with sqlite3.connect(DB_PATH) as con:
+        res = con.execute(f"""
+        SELECT
+            distinct 
+            id,
+            sha256
+        FROM "index" i LEFT JOIN "tags" t USING (id)
+        WHERE 
+            {where_restrictions}
+        """)
+        files_to_drop = res.fetchall()
+
+    if dry_run:
+        return len(files_to_drop)
+
+    for (i, hash_) in files_to_drop:
+        if not Path(STORAGE_PATH / hash_).exists():
+            raise FileNotFoundError(f"Corrupted internal storage: file with id '{i}' ({hash_}) does not exist")
+
+    for (i, hash_) in files_to_drop:
+        con = _prepare_drop(i)
+        Path(STORAGE_PATH / hash_).unlink()
+        con.commit()
+        con.close()
+
+    return None
