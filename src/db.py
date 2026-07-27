@@ -1,5 +1,6 @@
+"""Database- and storage-related functions"""
 import sqlite3
-from utility import DateInterval
+from src.utility import DateInterval
 from pathlib import Path
 from datetime import date
 from typing import Sequence
@@ -208,6 +209,8 @@ def _build_where_restrictions(
 ) -> str:
     """
     Helper function to build restriction for the WHERE clause.
+    Parameters specify which dimensions to include.
+
     Returns an SQL-string ready for parameter insertion.
     Parameter names are:
 
@@ -229,24 +232,18 @@ def _build_where_restrictions(
     if description_contains:
         where_restrictions.append(f"description LIKE :description_contains")
 
-    if date_created:
-        lower_sign = ">" + ("=" if date_created.include_lower else "")
-        upper_sign = "<" + ("=" if date_created.include_upper else "")
-
-        where_restrictions.append(f"date_created {lower_sign} :date_created_lower")
-        where_restrictions.append(f"date_created {upper_sign} :date_created_upper")
-
-    if date_added:
-        lower_sign = ">" + ("=" if date_added.include_lower else "")
-        upper_sign = "<" + ("=" if date_added.include_upper else "")
-
-        where_restrictions.append(f"date_added {lower_sign} :date_added_lower")
-        where_restrictions.append(f"date_added {upper_sign} :date_added_upper")
+    for name_, param in {"date_created": date_created, "date_added": date_added}.items():
+        if not param:
+            continue
+        lower_sign = ">" + ("=" if param.include_lower else "")
+        upper_sign = "<" + ("=" if param.include_upper else "")
+        where_restrictions.append(f"{name_} {lower_sign} :{name_}_lower")
+        where_restrictions.append(f"{name_} {upper_sign} :{name_}_upper")
 
     if tags:
-        where_restrictions.append(f"tag in :tags")
+        where_restrictions.append(f"tag = :tags")
 
-    return " AND ".join(where_restrictions)
+    return " AND ".join(where_restrictions).strip()
 
 
 def drop_file_set(
@@ -283,18 +280,14 @@ def drop_file_set(
         params = locals().copy()
         params.pop("dry_run")
 
-        if params.get("date_created"):
+        for param in ("date_added", "date_created"):
+            if not params.get(param):
+                continue
             params.update({
-                "date_created_lower": params["date_created"].lower,
-                "date_created_upper": params["date_created"].upper,
+                f"{param}_lower": params[param].lower,
+                f"{param}_upper": params[param].upper,
             })
-            params.pop("date_created")
-        if params.get("date_added"):
-            params.update({
-                "date_added_lower": params["date_added"].lower,
-                "date_added_upper": params["date_added"].upper,
-            })
-            params.pop("date_added")
+            params.pop(param)
 
         res = con.execute(select_query, params)
         files_to_drop = res.fetchall()

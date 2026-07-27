@@ -10,8 +10,10 @@ from src.db import (
     import_file,
     _prepare_insert,
     _prepare_drop,
-    _get_db_vars
+    _get_db_vars,
+    _build_where_restrictions
 )
+from src.utility import DateInterval
 
 
 @pytest.fixture
@@ -194,10 +196,36 @@ class TestHelperDrop:
 
 class TestWhereBuilder:
     def test_normal_inputs(self):
-        pass
+        created_interval = DateInterval(lower=date(2024, 1, 1), upper=date(2025, 1, 1))
+        added_interval = DateInterval(lower=date(2025, 1, 1), upper=date(2026, 1, 1))
+        got = _build_where_restrictions(id_=True, name=True, description_contains=True, date_created=created_interval,
+                                  date_added=added_interval, tags=True)
+        expected = ("id = :id_ AND name = :name AND description LIKE :description_contains AND "
+                    "date_created >= :date_created_lower AND date_created <= :date_created_upper AND "
+                    "date_added >= :date_added_lower AND date_added <= :date_added_upper AND "
+                    "tag = :tags")
+        assert got == expected, "Mismatch between expected and got SQL-string"
 
-    def test_only_id(self):
-        pass
+    def test_date_created_inclusive(self):
+        interval = DateInterval(lower=date(2025, 1, 1), upper=date(2026, 1, 1))
+        assert "date_created >= :date_created_lower AND date_created <= :date_created_upper" == _build_where_restrictions(
+            date_created=interval), "Date created check failed"
+
+    def test_date_created_exclusive(self):
+        interval = DateInterval(lower=date(2025, 1, 1), upper=date(2026, 1, 1),
+                                include_lower=False, include_upper=False)
+        assert "date_created > :date_created_lower AND date_created < :date_created_upper" == _build_where_restrictions(
+            date_created=interval), "Date created check failed"
+
+    def test_only_one(self):
+        assert "id = :id_" == _build_where_restrictions(id_=True), "Id only failed"
+        assert "name = :name" == _build_where_restrictions(name=True), "Name only failed"
+        assert "description LIKE :description_contains" == _build_where_restrictions(description_contains=True), \
+            "Description only failed"
+        assert "tag = :tags" == _build_where_restrictions(tags=True), "Tags only failed"
+
+    def test_empty(self):
+        assert "" == _build_where_restrictions()
 
 
 class TestDelete:
