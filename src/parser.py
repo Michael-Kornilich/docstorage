@@ -1,32 +1,7 @@
-from dataclasses import dataclass
+from utility import DateInterval
 from datetime import date
 import argparse
 import re
-
-
-@dataclass(frozen=True)
-class DateInterval:
-    include_upper: bool = True
-    include_lower: bool = True
-    upper: date = date(9999, 12, 31)
-    lower: date = date(1, 1, 1)
-
-    def __post_init__(self):
-        """
-        Check types and if the given interval is valid
-        """
-        if not isinstance(self.lower, date):
-            raise TypeError(f"The lower date must be a date. Got {type(self.lower).__name__}")
-        if not isinstance(self.include_lower, bool):
-            raise TypeError(f"The lower date inclusion must be boolean. Got {type(self.include_lower).__name__}")
-
-        if not isinstance(self.upper, date):
-            raise TypeError(f"The upper date must be a date. Got {type(self.upper).__name__}")
-        if not isinstance(self.include_upper, bool):
-            raise TypeError(f"The upper date inclusion must be boolean. Got {type(self.include_upper).__name__}")
-
-        if self.lower == self.upper and not all([self.include_lower, self.include_upper]):
-            raise ValueError("Invalid date interval: no dates exist with given restriction")
 
 
 class UniqueCSV(argparse.Action):
@@ -157,21 +132,24 @@ arg_parser = _CLIArgumentParser(prog="docstorage", description="Local document s
 commands = arg_parser.add_subparsers(dest="command", required=True)
 
 import_parser = commands.add_parser("import", help="ingest a file")
-import_parser.add_argument("--description", "-de", type=_limited_text, default=None, metavar="TEXT", help="file description (max 300 characters)")
+import_parser.add_argument("--description", "-de", type=_limited_text, default=None, metavar="TEXT",
+                           help="file description (max 300 characters)")
 import_parser.add_argument("--date-created", "-dc", action=ParseDate, default=date.today(), metavar="DATE")
 import_parser.add_argument("--tags", "-t", action=UniqueCSV, default=[])
 import_parser.add_argument("source", help="path to the file")
 
 fetch_parser = commands.add_parser("fetch", help="copy matching files to the landing directory")
 _add_filters(fetch_parser)
-fetch_parser.add_argument("--keep-existing", action="store_true", default=False, help="keep the files in the landing directory. If the directory is not clean and the flag is not given - error.")
+fetch_parser.add_argument("--keep-existing", action="store_true", default=False,
+                          help="keep the files in the landing directory. If the directory is not clean and the flag is not given - error.")
 
 overview_parser = commands.add_parser("overview", help="show a document overview")
 overview_parser.set_defaults(overview=True)
 
 delete_parser = commands.add_parser("delete", help="delete matching documents")
 _add_filters(delete_parser)
-delete_parser.add_argument("--all", "-a", action="store_true", default=False, help="permanently deletes all the files that match the criteria. Use with caution")
+delete_parser.add_argument("--all", "-a", action="store_true", default=False,
+                           help="permanently deletes all the files that match the criteria. Use with caution")
 
 healthcheck_parser = commands.add_parser("healthcheck", help="check stored file hashes")
 healthcheck_parser.set_defaults(healthcheck=True)
