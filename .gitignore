@@ -3,3 +3,4 @@
 *.db
 __pycache__
 tests/volume/*
+**/*.ipynb
