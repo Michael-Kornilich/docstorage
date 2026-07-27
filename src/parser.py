@@ -1,4 +1,4 @@
-from utility import DateInterval
+from .utility import DateInterval
 from datetime import date
 import argparse
 import re

@@ -3,4 +3,4 @@ export ROOT="/Users/Misha/Documents/Dev/projects/docstorage"
 
 export DB_PATH="${ROOT}/volume/index/index.db"
 export STORAGE_PATH="${ROOT}/Dev/projects/docstorage/volume/storage"
-poetry run python src/main.py "$@"
+poetry run python -m src.main "$@"
