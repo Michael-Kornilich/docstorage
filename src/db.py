@@ -5,6 +5,7 @@ from pathlib import Path
 from datetime import date
 from typing import Sequence
 from hashlib import sha256
+from tabulate import tabulate
 
 
 def _get_db_vars() -> tuple[Path, Path]:
@@ -77,6 +78,56 @@ def resolve_db() -> None:
 
 
 # Everything below assumes a valid DB #
+
+def _get_feasible_file_set(
+        id_: int | None = None,
+        name: str | None = None,
+        description_contains: str | None = None,
+        date_created: DateInterval | None = None,
+        date_added: DateInterval | None = None,
+        tags: Sequence[str] = (),
+) -> list[int]:
+    """
+    Helper function to return a set of file ids that fulfill given restrictions.
+    Returns a list of ids
+    """
+    DB_PATH, STORAGE_PATH = _get_db_vars()
+
+    where_restrictions = _build_where_restrictions(bool(id_), bool(name), bool(description_contains),
+                                                   date_created, date_added, tags)
+
+    params = locals().copy()
+
+    # Prepare parameter for binding
+    for param in ("date_added", "date_created"):
+        if not params.get(param):
+            continue
+        params.update({
+            f"{param}_lower": params[param].lower,
+            f"{param}_upper": params[param].upper,
+        })
+        params.pop(param)
+
+    if params.get("tags"):
+        for i, tag in enumerate(params.get("tags")):
+            params.update({f"tag{i}": tag})
+        params.pop("tags")
+
+    if params.get("description_contains"):
+        params["description_contains"] = "%" + params["description_contains"] + "%"
+
+    with sqlite3.connect(DB_PATH) as con:
+        select_query = f"""
+                SELECT
+                    distinct id
+                FROM "index" i LEFT JOIN "tags" t USING (id)
+                WHERE 
+                    {where_restrictions}
+                """
+        res = con.execute(select_query, params)
+        files_to_fetch = res.fetchall()
+        return [i[0] for i in files_to_fetch]
+
 
 # healthcheck - checks to what extent the index and the storage agree
 
@@ -174,6 +225,63 @@ def import_file(
 # --------------------------------------
 
 # read - read an entry and serve the file into the landing directory
+def fetch_file_set(
+        id_: int | None = None,
+        name: str | None = None,
+        description_contains: str | None = None,
+        date_created: DateInterval | None = None,
+        date_added: DateInterval | None = None,
+        tags: Sequence[str] = (),
+        dry_run: bool = True,
+) -> None | str:
+    """
+    Fetch and serve file(s) that match the union (AND) of the specified restrictions.
+    If multiple files match the set of restrictions, all matching are fetched.
+    Unspecified restrictions (None) are ignored.
+
+    dry_run: If true, do not fetch any files, but return a table + the number of potentially fetched ones.
+    """
+    DB_PATH, STORAGE_PATH = _get_db_vars()
+
+    ids = _get_feasible_file_set(id_, name, description_contains, date_created, date_added, tags)
+    ids = [str(i) for i in ids]
+
+    with sqlite3.connect(DB_PATH) as con:
+        res = con.execute(f"""
+        SELECT  
+            id,
+            name,
+            description,
+            date_created,
+            date_added
+        FROM "index"
+        WHERE id in ({", ".join(ids)})
+        """)
+        files_to_fetch = res.fetchall()
+
+    if dry_run:
+        display_rows = []
+        for file_id, name_, description, date_created_, date_added_ in files_to_fetch:
+            if len(description) > 23:
+                description = f"{description[:10]}...{description[-10:]}"
+            display_rows.append((
+                f"({file_id})",
+                name_,
+                description,
+                date.fromisoformat(date_created_).strftime("%Y.%m.%d"),
+                date.fromisoformat(date_added_).strftime("%Y.%m.%d"),
+            ))
+
+        if display_rows:
+            table = tabulate(display_rows, headers=("Id", "Name", "Description", "Created on", "Added on"))
+        else:
+            table = ""
+        total_files = f"\n\nTotal {len(files_to_fetch)} files."
+        return table + total_files
+
+    # TODO: continue working
+    return None
+
 
 # --------------------------------------
 # ------- Drop related functions -------
@@ -208,7 +316,7 @@ def _build_where_restrictions(
         tags: Sequence[str] | None = (),
 ) -> str:
     """
-    Helper function to build restriction for the WHERE clause.
+    Helper function to build restriction(s) for a SELECT * WHERE clause.
     Parameters specify which dimensions to include.
 
     Returns an SQL-string ready for parameter insertion.
@@ -220,7 +328,7 @@ def _build_where_restrictions(
     - description_contains => description_contains
     - date_created => date_created_lower, date_created_upper
     - date_added => date_added_lower, date_added_upper
-    - tags => tags
+    - tags => tag0, tag1, ... (depending on how many tags passed)
     """
 
     where_restrictions = []
@@ -267,41 +375,17 @@ def drop_file_set(
     """
     DB_PATH, STORAGE_PATH = _get_db_vars()
 
-    where_restrictions = _build_where_restrictions(bool(id_), bool(name), bool(description_contains),
-                                                   date_created, date_added, tags)
-
-    params = locals().copy()
-    params.pop("dry_run")
-
-    # Prepare parameter for binding
-    for param in ("date_added", "date_created"):
-        if not params.get(param):
-            continue
-        params.update({
-            f"{param}_lower": params[param].lower,
-            f"{param}_upper": params[param].upper,
-        })
-        params.pop(param)
-
-    if params.get("tags"):
-        for i, tag in enumerate(params.get("tags")):
-            params.update({f"tag{i}": tag})
-        params.pop("tags")
-
-    if params.get("description_contains"):
-        params["description_contains"] = "%" + params["description_contains"] + "%"
+    ids = _get_feasible_file_set(id_, name, description_contains, date_created, date_added, tags)
+    ids = [str(i) for i in ids]
 
     with sqlite3.connect(DB_PATH) as con:
-        select_query = f"""
-        SELECT
-            distinct 
-            id,
+        res = con.execute(f"""
+        SELECT 
+            id, 
             sha256
-        FROM "index" i LEFT JOIN "tags" t USING (id)
-        WHERE 
-            {where_restrictions}
-        """
-        res = con.execute(select_query, params)
+        FROM "index"
+        WHERE id in ({", ".join(ids)})
+        """)
         files_to_drop = res.fetchall()
 
     if dry_run:
