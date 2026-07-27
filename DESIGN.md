@@ -105,9 +105,10 @@ Flags:
 - --date-created | -dc: accepts a YYYY-MM-DD date OR a date range. Optional: defaults to None
 The date range should have the following form: {<|<=|>|>=|=}YYYY-MM-DD,{<|<=|>|>=|=}YYYY-MM-DD or {<|<=|>|>=|=}YYYY-MM-DD as a shortcut.
 The resulting object in the Namespace object should be a DateRange data class with min, max and left/right date closed attributes. None for missing values (both for dates and left/right close)
+- --date-added | -da: accepts a YYYY-MM-DD date OR a date range. Optional: defaults to None
 - --tags | -t: accepts a comma-separated string or a string. Returns a list in the Namespace. Optional: defaults to an empty list
-* --keep-existing: a boolean flag. Does not accept a value. Optional: defaults to false
-* --dry-run: a boolean flag. If invoked nothing changes until the actual serving. Then the app just prints which files will be fetched without acutally fetching them
+- --keep-existing: a boolean flag. Does not accept a value. Optional: defaults to false
+- --dry-run: a boolean flag. If invoked nothing changes until the actual serving. Then the app just prints which files will be fetched without acutally fetching them
 
 Positional aguments:
 - name. This is mutually exclusive with --name flag. Either the name positional argument or the flag. Can work in combination with other flags
