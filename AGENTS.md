@@ -7,7 +7,7 @@ Hence, run with `sh src/docstorage <args>`
 
 ### Test
 
-Run `poetry run python -m pytest tests/` from `docstorage/`
+Run `poetry run python -m pytest .` from `docstorage/`
 
 ### Best practices
 
