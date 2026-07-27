@@ -1,11 +1,17 @@
 import os
 import sqlite3
-
-import pytest
-from pathlib import Path
-from src.db import resolve_db, import_file, _prepare_insert, _prepare_drop
 from datetime import date
 import subprocess
+import pytest
+from pathlib import Path
+
+from src.db import (
+    resolve_db,
+    import_file,
+    _prepare_insert,
+    _prepare_drop,
+    _get_db_vars
+)
 
 
 @pytest.fixture
@@ -52,6 +58,11 @@ def setup_files_to_move(tmp_path, monkeypatch):
     yield tmp_path
 
 
+def test_missing_env_vars():
+    with pytest.raises(LookupError):
+        _get_db_vars()
+
+
 class TestResolve:
     def test_first_start(self, setup_db_environment):
         resolve_db()
@@ -75,10 +86,6 @@ class TestResolve:
 
     def test_bad_path(self, setup_bad_db_environment):
         with pytest.raises(FileNotFoundError):
-            resolve_db()
-
-    def test_missing_env_vars(self):
-        with pytest.raises(LookupError):
             resolve_db()
 
 
@@ -162,8 +169,10 @@ class TestImport:
             import_file(filepath, "some description",
                         date(2026, 1, 1), ["tag1", "tag2"])
 
+    # Missing file and directory will not be tested here
 
-class TestDelete:
+
+class TestDrop:
     def test_normal_drop(self, setup_db, setup_files_to_move):
         import_file(setup_files_to_move / "normal_file.pdf", "Some description",
                     date(2026, 1, 1), ["tag1", "tag2"])
@@ -172,11 +181,19 @@ class TestDelete:
         con.commit()
         con.close()
 
-        assert not list(Path(setup_db / "storage").iterdir())
-        # Add the check that the db is empty
+        with sqlite3.connect(setup_db / "index" / "index.db") as con:
+            res = con.execute("""SELECT *
+                                 FROM "index" """).fetchall()
+            assert len(res) == 0
 
     def test_missing_drop(self, setup_db):
-        with pytest.raises(Exception):
-            con = _prepare_drop(1)
-            con.commit()
-            con.close()
+        with pytest.raises(IndexError):
+            _prepare_drop(1)
+
+
+class TestDelete:
+    def test_normal_delete(self, setup_db, setup_files_to_move):
+        pass
+
+    def test_mising_landing_dir(self, setup_db):
+        pass

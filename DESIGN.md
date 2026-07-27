@@ -42,7 +42,7 @@ The primary key will be the ID, hence names can be duplicate
 There will also be a document_tags table with:
 - document id (foreign key)
 - tag
-for easier filering
+for easier filtering
 
 ## CLI examples: 
 **Create**
@@ -75,7 +75,7 @@ A json file for config (like the landing directory)
 
 ## Architecture
 - sqlite for indexing
-- python as code glue and file managment
+- python as code glue and file management
 
 Main objects:
 - CLI parser

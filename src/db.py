@@ -5,7 +5,7 @@ from typing import Sequence
 from hashlib import sha256
 
 
-def _get_db_path() -> tuple[Path, Path]:
+def _get_db_vars() -> tuple[Path, Path]:
     """Helper function to load DB paths. Returns a tuple of (db_path, storage_path)"""
     import os
     if not os.getenv("DB_PATH"):
@@ -21,26 +21,28 @@ def resolve_db() -> None:
     """Create a new index or check the validity of the existing one. Raises if DB and storage paths are misspecified."""
 
     # TODO: think about handling storage path
-    DB_PATH, STORAGE_PATH = _get_db_path()
+    DB_PATH, STORAGE_PATH = _get_db_vars()
 
     # id: SQLite's specific alias for rowid. The primary key is automatically generated
     create_index_sql = """
-    CREATE TABLE "index" (
-        id INTEGER PRIMARY KEY,
-        sha256 TEXT NOT NULL UNIQUE,
-        name TEXT NOT NULL,
-        description TEXT NOT NULL,
-        date_created TEXT NOT NULL,
-        date_added TEXT NOT NULL DEFAULT CURRENT_DATE
-    )
-    """.strip()
+                       CREATE TABLE "index"
+                       (
+                           id           INTEGER PRIMARY KEY,
+                           sha256       TEXT NOT NULL UNIQUE,
+                           name         TEXT NOT NULL,
+                           description  TEXT NOT NULL,
+                           date_created TEXT NOT NULL,
+                           date_added   TEXT NOT NULL DEFAULT CURRENT_DATE
+                       ) \
+                       """.strip()
     create_tags_sql = """
-    CREATE TABLE "tags" (
-        id INTEGER REFERENCES "index" (id) ON DELETE CASCADE,
-        tag TEXT NOT NULL,
-        PRIMARY KEY (id, tag)
-    )
-    """.strip()
+                      CREATE TABLE "tags"
+                      (
+                          id  INTEGER REFERENCES "index" (id) ON DELETE CASCADE,
+                          tag TEXT NOT NULL,
+                          PRIMARY KEY (id, tag)
+                      ) \
+                      """.strip()
 
     if not DB_PATH.exists():
         # Won't handle the case where the index does not exist, but files do or the other way around
@@ -90,22 +92,23 @@ def _prepare_insert(
     Raises FileExistsError if the insert is duplicate
     """
 
-    DB_PATH, _ = _get_db_path()
+    DB_PATH, _ = _get_db_vars()
 
     con = sqlite3.connect(DB_PATH, autocommit=False)
     con.execute("PRAGMA foreign_keys = ON")  # Turned off by default for backwards compatibility
 
     insert_sql = """
-        INSERT INTO "index" (sha256, name, description, date_created) 
-        VALUES  (?, ?, ?, ?)
-        """
+                 INSERT INTO "index" (sha256, name, description, date_created)
+                 VALUES (?, ?, ?, ?) \
+                 """
     params = (hexdigest, name, description, date_created.isoformat())
 
     try:
         cursor = con.execute(insert_sql, params)
         index_id = cursor.lastrowid
         con.executemany(
-            """INSERT INTO tags (id, tag) VALUES (?, ?)""",
+            """INSERT INTO tags (id, tag)
+               VALUES (?, ?)""",
             [(index_id, tag) for tag in tags]
         )
     except Exception as err:
@@ -120,9 +123,12 @@ def import_file(
         date_created: date,
         tags: Sequence[str]
 ) -> None:
-    """Moves the specified file into the internal storage and adds and entry to the index"""
+    """
+    Moves the specified file into the internal storage and adds and entry to the index.
+    Owns file checking. Path checking is done upstream
+    """
 
-    _, STORAGE_PATH = _get_db_path()
+    _, STORAGE_PATH = _get_db_vars()
 
     try:
         with open(source, mode="rb") as source_file:
@@ -163,10 +169,16 @@ def _prepare_drop(id_: int) -> sqlite3.Connection:
     Does not commit the drop, hence the name.
     Raises FileExistsError if the insert is duplicate
     """
-    DB_PATH, _ = _get_db_path()
+    DB_PATH, _ = _get_db_vars()
     con = sqlite3.connect(DB_PATH, autocommit=False)
     con.execute("PRAGMA foreign_keys = ON")  # Turned off by default for backwards compatibility
-    con.execute("""DELETE FROM "index" WHERE id = ?""", (id_,))
+    res = con.execute("""DELETE
+                         FROM "index"
+                         WHERE id = ?""", (id_,))
+
+    if res.rowcount == 0:
+        raise IndexError(f"Index does not exist: {id_}")
+
     return con
 
 # read - read an entry and serve the file into the landing directory
