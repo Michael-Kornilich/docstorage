@@ -296,12 +296,8 @@ def drop_file_set(
         return len(files_to_drop)
 
     for (i, hash_) in files_to_drop:
-        if not Path(STORAGE_PATH / hash_).exists():
-            raise FileNotFoundError(f"Corrupted internal storage: file with id '{i}' ({hash_}) does not exist")
-
-    for (i, hash_) in files_to_drop:
         con = _prepare_drop(i)
-        Path(STORAGE_PATH / hash_).unlink()
+        Path(STORAGE_PATH / hash_).unlink(missing_ok=True)
         con.commit()
         con.close()
 
