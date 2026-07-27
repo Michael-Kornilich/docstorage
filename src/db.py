@@ -205,7 +205,7 @@ def _build_where_restrictions(
         description_contains: bool = False,
         date_created: DateInterval | None = None,
         date_added: DateInterval | None = None,
-        tags: bool = False,
+        tags: Sequence[str] | None = (),
 ) -> str:
     """
     Helper function to build restriction for the WHERE clause.
@@ -241,7 +241,10 @@ def _build_where_restrictions(
         where_restrictions.append(f"{name_} {upper_sign} :{name_}_upper")
 
     if tags:
-        where_restrictions.append(f"tag = :tags")
+        # Don't even ask how
+        # tag in (:tag0, :tag1, :tag2, ...)
+        tag_clause = "tag in " + "(" + ", ".join([f":tag{n}" for n, _ in enumerate(tags)]) + ")"
+        where_restrictions.append(tag_clause)
 
     return " AND ".join(where_restrictions).strip()
 
@@ -265,7 +268,28 @@ def drop_file_set(
     DB_PATH, STORAGE_PATH = _get_db_vars()
 
     where_restrictions = _build_where_restrictions(bool(id_), bool(name), bool(description_contains),
-                                                   date_created, date_added, bool(tags))
+                                                   date_created, date_added, tags)
+
+    params = locals().copy()
+    params.pop("dry_run")
+
+    # Prepare parameter for binding
+    for param in ("date_added", "date_created"):
+        if not params.get(param):
+            continue
+        params.update({
+            f"{param}_lower": params[param].lower,
+            f"{param}_upper": params[param].upper,
+        })
+        params.pop(param)
+
+    if params.get("tags"):
+        for i, tag in enumerate(params.get("tags")):
+            params.update({f"tag{i}": tag})
+        params.pop("tags")
+
+    if params.get("description_contains"):
+        params["description_contains"] = "%" + params["description_contains"] + "%"
 
     with sqlite3.connect(DB_PATH) as con:
         select_query = f"""
@@ -277,18 +301,6 @@ def drop_file_set(
         WHERE 
             {where_restrictions}
         """
-        params = locals().copy()
-        params.pop("dry_run")
-
-        for param in ("date_added", "date_created"):
-            if not params.get(param):
-                continue
-            params.update({
-                f"{param}_lower": params[param].lower,
-                f"{param}_upper": params[param].upper,
-            })
-            params.pop(param)
-
         res = con.execute(select_query, params)
         files_to_drop = res.fetchall()
 

@@ -26,6 +26,8 @@ from src.utility import DateInterval
 # - setup_db_environment => setup_db
 # - (setup_db, setup_files_to_move) => setup_populated_storage
 
+# All fixtures yield the root of the temporary directory
+
 @pytest.fixture
 def setup_db_environment(tmp_path, monkeypatch):
     """Set up the database volume and yield the temp directory root."""
@@ -96,6 +98,19 @@ def setup_populated_storage(setup_db, setup_files_to_move):
 def test_missing_env_vars():
     with pytest.raises(LookupError):
         _get_db_vars()
+
+
+def get_index_len():
+    DB_PATH, _ = _get_db_vars()
+    with sqlite3.connect(DB_PATH) as con:
+        res = con.execute("""SELECT *
+                             FROM "index" """).fetchall()
+    return len(res)
+
+
+def get_storage_len():
+    _, STORAGE_PATH = _get_db_vars()
+    return len(list(Path(STORAGE_PATH).iterdir()))
 
 
 class TestResolve:
@@ -245,12 +260,15 @@ class TestWhereClauseBuild:
         created_interval = DateInterval(lower=date(2024, 1, 1), upper=date(2025, 1, 1))
         added_interval = DateInterval(lower=date(2025, 1, 1), upper=date(2026, 1, 1))
         got = _build_where_restrictions(id_=True, name=True, description_contains=True, date_created=created_interval,
-                                        date_added=added_interval, tags=True)
+                                        date_added=added_interval, tags=["a", "b"])
         expected = ("id = :id_ AND name = :name AND description LIKE :description_contains AND "
                     "date_created >= :date_created_lower AND date_created <= :date_created_upper AND "
                     "date_added >= :date_added_lower AND date_added <= :date_added_upper AND "
-                    "tag = :tags")
+                    "tag in (:tag0, :tag1)")
         assert got == expected, "Mismatch between expected and got SQL-string"
+
+    def test_tag_build(self):
+        assert "tag in (:tag0, :tag1, :tag2)" == _build_where_restrictions(tags=["a", "b", "c"])
 
     def test_date_created_inclusive(self):
         interval = DateInterval(lower=date(2025, 1, 1), upper=date(2026, 1, 1))
@@ -268,7 +286,7 @@ class TestWhereClauseBuild:
         assert "name = :name" == _build_where_restrictions(name=True), "Name only failed"
         assert "description LIKE :description_contains" == _build_where_restrictions(description_contains=True), \
             "Description only failed"
-        assert "tag = :tags" == _build_where_restrictions(tags=True), "Tags only failed"
+        assert "tag in (:tag0, :tag1)" == _build_where_restrictions(tags=["tag1", "tag2"]), "Tags only failed"
 
     def test_empty(self):
         assert "" == _build_where_restrictions()
@@ -277,20 +295,36 @@ class TestWhereClauseBuild:
 class TestDelete:
     def test_normal_delete(self, setup_populated_storage):
         drop_file_set(description_contains="content", dry_run=False)
-        assert len(list(Path(setup_populated_storage / "volume" / "storage").iterdir())) == 1
-        with sqlite3.connect() as con:
-            pass
-        assert True  # check the index
+        assert get_storage_len() == 1
+        assert get_index_len() == 1
+
+    def test_id_delete(self, setup_populated_storage):
+        drop_file_set(id_=1, dry_run=False)
+        assert get_storage_len() == 2
+        assert get_index_len() == 2
+
+    def test_name_delete(self, setup_populated_storage):
+        drop_file_set(name="normal-file-a.pdf", dry_run=False)
+        assert get_storage_len() == 2
+        assert get_index_len() == 2
 
     def test_dry_run(self, setup_populated_storage):
-        assert drop_file_set(description_contains="content", dry_run=True) == 2
-        assert True  # not dropped entries in the index
+        assert drop_file_set(description_contains="content", dry_run=True) == 2, \
+            "Returned number of dry-dropped does match the expected number"
+        assert get_index_len() == 3
 
     def test_tag_delete(self, setup_populated_storage):
         drop_file_set(tags=["tag2", "tag3"], dry_run=False)
-        assert len(list(Path(setup_populated_storage / "volume" / "storage").iterdir())) == 1
+        assert get_index_len() == 1
+        assert get_storage_len() == 1
 
     def test_missing_tags(self, setup_populated_storage):
         drop_file_set(tags=["tag-1", "tag-2"], dry_run=False)
-        assert len(list(Path(setup_populated_storage / "volume").iterdir())) == 3
-        assert True # check index
+        assert get_index_len() == 3
+        assert get_storage_len() == 3
+
+    def test_miscellaneous_dry(self, setup_populated_storage):
+        assert drop_file_set(id_=10, dry_run=True) == 0, "Bad id failed"
+        assert drop_file_set(name="hello-world", dry_run=True) == 0, "Bad name failed"
+        assert drop_file_set(description_contains="description", dry_run=True) == 3, "Multiple descriptions failed"
+        assert drop_file_set(tags=["tag-1", "tag-2"], dry_run=True) == 0, "Bad tags failed"
