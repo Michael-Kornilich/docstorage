@@ -27,6 +27,20 @@ class DateInterval:
         if self.lower == self.upper and not all([self.include_lower, self.include_upper]):
             raise ValueError("Invalid date interval: no dates exist with given restriction")
 
+        if self.lower > self.upper:
+            raise ValueError("Invalid date interval: no dates exist with given restriction")
+
         if self.upper == date(9999, 12, 31) and self.lower == date(1, 1, 1):
             from warnings import warn
             warn("Degenerate date interval")
+
+    def __contains__(self, date_: date) -> bool:
+        if not isinstance(date_, date):
+            raise TypeError(f"The date must be a date. Got {type(date_).__name__}")
+
+        if self.lower < date_ < self.upper:
+            return True
+        if (self.include_lower and date_ == self.lower) or (not self.include_upper and date_ == self.upper):
+            return True
+
+        return False
