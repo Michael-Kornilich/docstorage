@@ -4,8 +4,6 @@ from src.utility import DateInterval
 from pathlib import Path
 from datetime import date
 from typing import Sequence
-from hashlib import sha256
-from tabulate import tabulate
 
 
 def _get_db_vars() -> tuple[Path, Path]:
@@ -17,6 +15,21 @@ def _get_db_vars() -> tuple[Path, Path]:
         raise LookupError("Env variable STORAGE_PATH is not specified")
 
     return Path(os.getenv("DB_PATH")), Path(os.getenv("STORAGE_PATH"))
+
+
+def _get_config() -> dict:
+    """Helper function to load config"""
+    with open("/Users/Misha/Documents/Dev/projects/docstorage/config.json", mode="r") as f:
+        import json
+        try:
+            config = json.load(f)
+        except Exception as err:
+            raise ImportError(f"Failed to load config: {err}") from err
+
+    expected_keys = {"landing_directory"}
+    if expected_keys != set(config.keys()):
+        raise KeyError("The config keys do not match the expected keys.")
+    return config
 
 
 # Possible issue: odd paths leading outside the project are unhandled
@@ -74,7 +87,7 @@ def resolve_db() -> None:
         with open(DB_PATH, mode="rb") as f:
             if len(f.read()) == 0:
                 raise RuntimeError(f"Corrupted index: no data available")
-    return
+    return None
 
 
 # Everything below assumes a valid DB #
@@ -130,6 +143,7 @@ def _get_feasible_file_set(
 
 
 # healthcheck - checks to what extent the index and the storage agree
+# get/set config - gets and sets config
 
 # --------------------------------------
 # ------ Import related functions ------
@@ -196,6 +210,7 @@ def import_file(
     if not binary:
         raise ImportError("Cannot move empty files.")
 
+    from hashlib import sha256
     hexdigest = sha256(binary).hexdigest()
 
     try:
@@ -217,7 +232,7 @@ def import_file(
     finally:
         con.close()
 
-    return
+    return None
 
 
 # --------------------------------------
@@ -233,6 +248,7 @@ def fetch_file_set(
         date_added: DateInterval | None = None,
         tags: Sequence[str] = (),
         dry_run: bool = True,
+        keep_existing: bool = False
 ) -> None | str:
     """
     Fetch and serve file(s) that match the union (AND) of the specified restrictions.
@@ -250,6 +266,7 @@ def fetch_file_set(
         res = con.execute(f"""
         SELECT  
             id,
+            sha256,
             name,
             description,
             date_created,
@@ -261,7 +278,7 @@ def fetch_file_set(
 
     if dry_run:
         display_rows = []
-        for file_id, name_, description, date_created_, date_added_ in files_to_fetch:
+        for file_id, hash_, name_, description, date_created_, date_added_ in files_to_fetch:
             if len(description) > 23:
                 description = f"{description[:10]}...{description[-10:]}"
             display_rows.append((
@@ -273,13 +290,34 @@ def fetch_file_set(
             ))
 
         if display_rows:
+            from tabulate import tabulate
             table = tabulate(display_rows, headers=("Id", "Name", "Description", "Created on", "Added on"))
         else:
             table = ""
         total_files = f"\n\nTotal {len(files_to_fetch)} files."
         return table + total_files
 
-    # TODO: continue working
+    config = _get_config()
+
+    import subprocess
+
+    # Empty dir regardless of the flag
+    if not list(Path(config["landing-directory"]).iterdir()):
+        for (_, hash_, name_, *_) in files_to_fetch:
+            subprocess.run(["cp", STORAGE_PATH / hash_, Path(config["landing_directory"]) / name_], check=True)
+        return None
+
+    # No flag, not empty
+    if not keep_existing:
+        raise FileExistsError("The landing directory is not empty.")
+
+    # flag, not empty
+    for (_, hash_, name_, *_) in files_to_fetch:
+        target_file = Path(config["landing_directory"]) / name_
+        if target_file.exists():
+            new_name = "doc " + name_
+            subprocess.run(["cp", STORAGE_PATH / hash_, Path(config["landing_directory"]) / new_name], check=True)
+
     return None
 
 
