@@ -11,6 +11,8 @@ from src.db import (
     _prepare_insert,
     import_file,
 
+    fetch_file_set,
+
     _prepare_drop,
     _build_where_restrictions,
     drop_file_set,
@@ -194,7 +196,7 @@ class TestImport:
         import_file(filepath, "some description",
                     date(2026, 1, 1), ["tag1", "tag2"])
 
-        assert list(Path(setup_db / "volume" / "storage").iterdir()), "The file has not been moved"
+        assert get_storage_len() == 1, "The file has not been moved successfully"
 
         internal_filepath: Path = list(Path(setup_db / "volume" / "storage").iterdir())[0]
         got_bytes = internal_filepath.read_bytes()
@@ -207,7 +209,7 @@ class TestImport:
         import_file(filepath, "some description",
                     date(2026, 1, 1), ["tag1", "tag2"])
 
-        assert list(Path(setup_db / "volume" / "storage").iterdir()), "The file has not been moved"
+        assert get_storage_len() == 1, "The file has not been moved successfully"
 
         internal_filepath: Path = list(Path(setup_db / "volume" / "storage").iterdir())[0]
         got_bytes = internal_filepath.read_bytes()
@@ -292,6 +294,10 @@ class TestWhereClauseBuild:
         assert "" == _build_where_restrictions()
 
 
+class TestFeasibleSet:
+    pass
+
+
 class TestDelete:
     def test_normal_delete(self, setup_populated_storage):
         drop_file_set(description_contains="content", dry_run=False)
@@ -312,6 +318,7 @@ class TestDelete:
         assert drop_file_set(description_contains="content", dry_run=True) == 2, \
             "Returned number of dry-dropped does match the expected number"
         assert get_index_len() == 3
+        assert get_storage_len() == 3
 
     def test_tag_delete(self, setup_populated_storage):
         drop_file_set(tags=["tag2", "tag3"], dry_run=False)
@@ -328,3 +335,17 @@ class TestDelete:
         assert drop_file_set(name="hello-world", dry_run=True) == 0, "Bad name failed"
         assert drop_file_set(description_contains="description", dry_run=True) == 3, "Multiple descriptions failed"
         assert drop_file_set(tags=["tag-1", "tag-2"], dry_run=True) == 0, "Bad tags failed"
+
+        assert get_index_len() == 3, "Dry run failed"
+        assert get_storage_len() == 3, "Dry run failed"
+
+
+class TestFetch:
+    def test_normal_fetch(self, setup_populated_storage):
+        pass
+
+    def test_empty_fetch(self, setup_populated_storage):
+        pass
+
+    def test_missing_fetch(self, setup_populated_storage):
+        pass
