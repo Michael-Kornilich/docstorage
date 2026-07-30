@@ -6,27 +6,30 @@ from datetime import date
 from typing import Sequence
 
 
-def _get_db_vars() -> tuple[Path, Path]:
-    """Helper function to load DB paths. Returns a tuple of (db_path, storage_path)"""
+def _get_env() -> dict[str, str]:
+    """Load and validate the environment variables required by the app."""
     import os
-    if not os.getenv("DB_PATH"):
-        raise LookupError("Env variable DB_PATH is not specified")
-    if not os.getenv("STORAGE_PATH"):
-        raise LookupError("Env variable STORAGE_PATH is not specified")
-
-    return Path(os.getenv("DB_PATH")), Path(os.getenv("STORAGE_PATH"))
+    env_vars = ("DB_PATH", "STORAGE_PATH", "CONFIG_PATH")
+    env = {}
+    for env_var in env_vars:
+        value = os.getenv(env_var)
+        if not value:
+            raise LookupError(f"Env variable {env_var} is not specified")
+        env[env_var] = value
+    return env
 
 
 def _get_config() -> dict:
     """Helper function to load config"""
-    with open("/Users/Misha/Documents/Dev/projects/docstorage/config.json", mode="r") as f:
+    config_path = Path(_get_env()["CONFIG_PATH"])
+    with open(config_path, mode="r") as f:
         import json
         try:
             config = json.load(f)
         except Exception as err:
             raise ImportError(f"Failed to load config: {err}") from err
 
-    expected_keys = {"landing_directory"}
+    expected_keys = {"landing-directory"}
     if expected_keys != set(config.keys()):
         raise KeyError("The config keys do not match the expected keys.")
     return config
@@ -36,7 +39,8 @@ def _get_config() -> dict:
 def resolve_db() -> None:
     """Create a new index or check the validity of the existing one. Raises if DB and storage paths are misspecified."""
 
-    DB_PATH, STORAGE_PATH = _get_db_vars()
+    env = _get_env()
+    DB_PATH, STORAGE_PATH = Path(env["DB_PATH"]), Path(env["STORAGE_PATH"])
 
     # id: SQLite's specific alias for rowid. The primary key is automatically generated
     create_index_sql = """
@@ -104,7 +108,8 @@ def _get_feasible_file_set(
     Helper function to return a set of file ids that fulfill given restrictions.
     Returns a list of ids
     """
-    DB_PATH, STORAGE_PATH = _get_db_vars()
+    env = _get_env()
+    DB_PATH, STORAGE_PATH = Path(env["DB_PATH"]), Path(env["STORAGE_PATH"])
 
     where_restrictions = _build_where_restrictions(bool(id_), bool(name), bool(description_contains),
                                                    date_created, date_added, tags)
@@ -142,7 +147,26 @@ def _get_feasible_file_set(
         return [i[0] for i in files_to_fetch]
 
 
-# healthcheck - checks to what extent the index and the storage agree
+def get_healthcheck() -> None:
+    """Compare hashes stored in index and in the storage. Raise if they don't match"""
+    env = _get_env()
+    DB_PATH, STORAGE_PATH = Path(env["DB_PATH"]), Path(env["STORAGE_PATH"])
+    with sqlite3.connect(DB_PATH) as con:
+        select_query = f"""
+        SELECT
+            sha256
+        FROM "index"
+        """
+        index = con.execute(select_query).fetchall()
+    storage_hashes = set(i.name for i in Path(STORAGE_PATH).iterdir())
+    index_hashes = set(i[0] for i in index)
+
+    if storage_hashes != index_hashes:
+        raise RuntimeError("Storage and index do not agree")
+
+    return
+
+
 # get/set config - gets and sets config
 
 # --------------------------------------
@@ -161,7 +185,7 @@ def _prepare_insert(
     Raises FileExistsError if the insert is duplicate
     """
 
-    DB_PATH, _ = _get_db_vars()
+    DB_PATH = Path(_get_env()["DB_PATH"])
 
     con = sqlite3.connect(DB_PATH, autocommit=False)
     con.execute("PRAGMA foreign_keys = ON")  # Turned off by default for backwards compatibility
@@ -199,7 +223,7 @@ def import_file(
     Owns file checking. Path checking is done upstream
     """
 
-    _, STORAGE_PATH = _get_db_vars()
+    STORAGE_PATH = Path(_get_env()["STORAGE_PATH"])
 
     try:
         with open(source, mode="rb") as source_file:
@@ -239,7 +263,6 @@ def import_file(
 # ------ Fetch related functions -------
 # --------------------------------------
 
-# read - read an entry and serve the file into the landing directory
 def fetch_file_set(
         id_: int | None = None,
         name: str | None = None,
@@ -257,7 +280,8 @@ def fetch_file_set(
 
     dry_run: If true, do not fetch any files, but return a table + the number of potentially fetched ones.
     """
-    DB_PATH, STORAGE_PATH = _get_db_vars()
+    env = _get_env()
+    DB_PATH, STORAGE_PATH = Path(env["DB_PATH"]), Path(env["STORAGE_PATH"])
 
     ids = _get_feasible_file_set(id_, name, description_contains, date_created, date_added, tags)
     ids = [str(i) for i in ids]
@@ -304,7 +328,7 @@ def fetch_file_set(
     # Empty dir regardless of the flag
     if not list(Path(config["landing-directory"]).iterdir()):
         for (_, hash_, name_, *_) in files_to_fetch:
-            subprocess.run(["cp", STORAGE_PATH / hash_, Path(config["landing_directory"]) / name_], check=True)
+            subprocess.run(["cp", STORAGE_PATH / hash_, Path(config["landing-directory"]) / name_], check=True)
         return None
 
     # No flag, not empty
@@ -330,7 +354,7 @@ def _prepare_drop(id_: int) -> sqlite3.Connection:
     Does not commit the drop, hence the name.
     Raises FileExistsError if the insert is duplicate
     """
-    DB_PATH, _ = _get_db_vars()
+    DB_PATH = Path(_get_env()["DB_PATH"])
     con = sqlite3.connect(DB_PATH, autocommit=False)
     con.execute("PRAGMA foreign_keys = ON")  # Turned off by default for backwards compatibility
     res = con.execute("""DELETE
@@ -340,7 +364,7 @@ def _prepare_drop(id_: int) -> sqlite3.Connection:
     if res.rowcount == 0:
         con.rollback()
         con.close()
-        raise IndexError(f"Index does not exist: {id_}")
+        raise IndexError(f"Id does not exist: {id_}")
 
     return con
 
@@ -411,7 +435,8 @@ def drop_file_set(
 
     dry_run: If true, do not drop any files, but return the number of potentially dropped files.
     """
-    DB_PATH, STORAGE_PATH = _get_db_vars()
+    env = _get_env()
+    DB_PATH, STORAGE_PATH = Path(env["DB_PATH"]), Path(env["STORAGE_PATH"])
 
     ids = _get_feasible_file_set(id_, name, description_contains, date_created, date_added, tags)
     ids = [str(i) for i in ids]

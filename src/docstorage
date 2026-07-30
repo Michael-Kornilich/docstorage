@@ -2,5 +2,6 @@
 export ROOT="/Users/Misha/Documents/Dev/projects/docstorage"
 
 export DB_PATH="${ROOT}/volume/index/index.db"
-export STORAGE_PATH="${ROOT}/Dev/projects/docstorage/volume/storage"
+export STORAGE_PATH="${ROOT}/volume/storage"
+export CONFIG_PATH="${ROOT}/config.json"
 poetry run python -m src.main "$@"

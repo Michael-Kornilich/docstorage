@@ -342,10 +342,26 @@ class TestDelete:
 
 class TestFetch:
     def test_normal_fetch(self, setup_populated_storage):
-        pass
+        out = fetch_file_set(id_=1, dry_run=False)
+        assert out is None
+        assert get_storage_len() == 3
+        assert get_index_len() == 3
 
     def test_empty_fetch(self, setup_populated_storage):
-        pass
+        out = fetch_file_set(id_=-1, dry_run=False)
+        assert out is None
+        assert get_storage_len() == 3
+        assert get_index_len() == 3
 
     def test_missing_fetch(self, setup_populated_storage):
+        out = fetch_file_set(name="hello-world", dry_run=False)
+        assert out is None
+        assert get_storage_len() == 3
+        assert get_index_len() == 3
+
+    def test_dry_run(self, setup_populated_storage):
+        out = fetch_file_set(id_=1, dry_run=True)
+        assert out is not None
+
+    def test_exising_file_fetch(self, setup_populated_storage):
         pass
