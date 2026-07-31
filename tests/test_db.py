@@ -4,9 +4,10 @@ from datetime import date
 import subprocess
 import pytest
 from pathlib import Path
+import json
 
 from src.db import (
-    _get_db_vars,
+    _get_env,
     resolve_db,
     _prepare_insert,
     import_file,
@@ -34,6 +35,10 @@ from src.utility import DateInterval
 def setup_db_environment(tmp_path, monkeypatch):
     """Set up the database volume and yield the temp directory root."""
     subprocess.run(["mkdir", "-p", f"{tmp_path}/volume/index", f"{tmp_path}/volume/storage"])
+    subprocess.run(["touch", f"{tmp_path}/config.json"], check=True)
+
+    config = {"landing-directory": str(tmp_path / "landing")}
+    subprocess.run(["echo", json.dumps(config), ">", f"{tmp_path}/config.json"], check=True)
 
     monkeypatch.setenv(
         "DB_PATH",
@@ -42,6 +47,10 @@ def setup_db_environment(tmp_path, monkeypatch):
     monkeypatch.setenv(
         "STORAGE_PATH",
         str(tmp_path / "volume" / "storage"),
+    )
+    monkeypatch.setenv(
+        "CONFIG_PATH",
+        str(tmp_path / "config.json"),
     )
     yield tmp_path
 
@@ -56,6 +65,10 @@ def setup_bad_db_environment(tmp_path, monkeypatch):
     monkeypatch.setenv(
         "STORAGE_PATH",
         str(tmp_path / "volume" / "index" / "storage"),
+    )
+    monkeypatch.setenv(
+        "CONFIG_PATH",
+        str(tmp_path / "config.json"),
     )
     yield tmp_path
 
@@ -99,19 +112,18 @@ def setup_populated_storage(setup_db, setup_files_to_move):
 
 def test_missing_env_vars():
     with pytest.raises(LookupError):
-        _get_db_vars()
+        _get_env()
 
 
 def get_index_len():
-    DB_PATH, _ = _get_db_vars()
-    with sqlite3.connect(DB_PATH) as con:
+    with sqlite3.connect(_get_env()["DB_PATH"]) as con:
         res = con.execute("""SELECT *
                              FROM "index" """).fetchall()
     return len(res)
 
 
 def get_storage_len():
-    _, STORAGE_PATH = _get_db_vars()
+    STORAGE_PATH = _get_env()["STORAGE_PATH"]
     return len(list(Path(STORAGE_PATH).iterdir()))
 
 
