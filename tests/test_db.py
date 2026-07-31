@@ -1,7 +1,7 @@
 import os
 import sqlite3
 from datetime import date
-import subprocess
+import shutil
 import pytest
 from pathlib import Path
 import json
@@ -34,11 +34,14 @@ from src.utility import DateInterval
 @pytest.fixture
 def setup_db_environment(tmp_path, monkeypatch):
     """Set up the database volume and yield the temp directory root."""
-    subprocess.run(["mkdir", "-p", f"{tmp_path}/volume/index", f"{tmp_path}/volume/storage"])
-    subprocess.run(["touch", f"{tmp_path}/config.json"], check=True)
+    (tmp_path / "volume" / "index").mkdir(parents=True)
+    (tmp_path / "volume" / "storage").mkdir(parents=True)
+    (tmp_path / "landing").mkdir()
+    (tmp_path / "config.json").touch()
 
-    config = {"landing-directory": str(tmp_path / "landing")}
-    subprocess.run(["echo", json.dumps(config), ">", f"{tmp_path}/config.json"], check=True)
+    config = {"landing-directory": str((tmp_path / "landing").resolve())}
+    with open(tmp_path / "config.json", "w") as f:
+        json.dump(config, f)
 
     monkeypatch.setenv(
         "DB_PATH",
@@ -83,11 +86,11 @@ def setup_db(setup_db_environment):
 @pytest.fixture
 def setup_files_to_move(tmp_path, monkeypatch):
     """Copy test files into and yield the temp directory root."""
-    test_volume = Path("/Users/Misha/Documents/Dev/projects/docstorage/tests/volume")
+    test_volume = Path(__file__).parent / "volume"
     for file in test_volume.iterdir():
         if file.name.startswith("."):
             continue
-        subprocess.run(["cp", file, str(tmp_path / file.name)], check=True)
+        shutil.copy2(file, tmp_path / file.name)
     yield tmp_path
 
 
