@@ -132,4 +132,11 @@ Positional arguments:
 **healthcheck**
 No arguments are accepted. just a boolean value if invoked
 
+### App logic
+There are 2 configs: the user config and local config.
+The former includes the user specified landing directory. The latter internal paths to the database and storage.
+These are filled at install-time via the installer. On each start a PROJECT_ROOT env variable is passed 
+to specify the path to the config directory. This is not the best solution, but it's the simplest one to allow testing
+and simple deployment. 
+
 Testing: `poetry run python -m pytest -s`

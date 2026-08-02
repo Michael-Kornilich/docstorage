@@ -8,7 +8,7 @@ from typing import Literal, Sequence
 
 
 def _get_config(tp: Literal["user", "local"]) -> dict[str, str]:
-    """Load and validate either the user or system configuration."""
+    """Load and validate either the user or local configuration."""
     import os
     CONFIG_DIR = Path(os.environ["PROJECT_ROOT"]) / "configs"
     CONFIG_KEYS = {
@@ -35,7 +35,7 @@ def _get_config(tp: Literal["user", "local"]) -> dict[str, str]:
 def resolve_db() -> None:
     """Create a new index or check the validity of the existing one. Raises if DB and storage paths are misspecified."""
 
-    config = _get_config("system")
+    config = _get_config("local")
     DB_PATH, STORAGE_PATH = Path(config["db-path"]), Path(config["storage-path"])
 
     # id: SQLite's specific alias for rowid. The primary key is automatically generated
@@ -104,7 +104,7 @@ def _get_feasible_file_set(
     Helper function to return a set of file ids that fulfill given restrictions.
     Returns a list of ids
     """
-    config = _get_config("system")
+    config = _get_config("local")
     DB_PATH, STORAGE_PATH = Path(config["db-path"]), Path(config["storage-path"])
 
     where_restrictions = _build_where_restrictions(bool(id_), bool(name), bool(description_contains),
@@ -145,7 +145,7 @@ def _get_feasible_file_set(
 
 def get_healthcheck() -> None:
     """Compare hashes stored in index and in the storage. Raise if they don't match"""
-    config = _get_config("system")
+    config = _get_config("local")
     DB_PATH, STORAGE_PATH = Path(config["db-path"]), Path(config["storage-path"])
     with sqlite3.connect(DB_PATH) as con:
         select_query = f"""
@@ -181,7 +181,7 @@ def _prepare_insert(
     Raises FileExistsError if the insert is duplicate
     """
 
-    DB_PATH = Path(_get_config("system")["db-path"])
+    DB_PATH = Path(_get_config("local")["db-path"])
 
     con = sqlite3.connect(DB_PATH, autocommit=False)
     con.execute("PRAGMA foreign_keys = ON")  # Turned off by default for backwards compatibility
@@ -219,7 +219,7 @@ def import_file(
     Owns file checking. Path checking is done upstream
     """
 
-    STORAGE_PATH = Path(_get_config("system")["storage-path"])
+    STORAGE_PATH = Path(_get_config("local")["storage-path"])
 
     try:
         with open(source, mode="rb") as source_file:
@@ -276,8 +276,8 @@ def fetch_file_set(
 
     dry_run: If true, do not fetch any files, but return a table + the number of potentially fetched ones.
     """
-    system_config = _get_config("system")
-    DB_PATH, STORAGE_PATH = Path(system_config["db-path"]), Path(system_config["storage-path"])
+    local_config = _get_config("local")
+    DB_PATH, STORAGE_PATH = Path(local_config["db-path"]), Path(local_config["storage-path"])
 
     ids = _get_feasible_file_set(id_, name, description_contains, date_created, date_added, tags)
     ids = [str(i) for i in ids]
@@ -348,7 +348,7 @@ def _prepare_drop(id_: int) -> sqlite3.Connection:
     Does not commit the drop, hence the name.
     Raises FileExistsError if the insert is duplicate
     """
-    DB_PATH = Path(_get_config("system")["db-path"])
+    DB_PATH = Path(_get_config("local")["db-path"])
     con = sqlite3.connect(DB_PATH, autocommit=False)
     con.execute("PRAGMA foreign_keys = ON")  # Turned off by default for backwards compatibility
     res = con.execute("""DELETE
@@ -429,7 +429,7 @@ def drop_file_set(
 
     dry_run: If true, do not drop any files, but return the number of potentially dropped files.
     """
-    config = _get_config("system")
+    config = _get_config("local")
     DB_PATH, STORAGE_PATH = Path(config["db-path"]), Path(config["storage-path"])
 
     ids = _get_feasible_file_set(id_, name, description_contains, date_created, date_added, tags)

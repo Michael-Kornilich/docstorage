@@ -37,34 +37,36 @@ def setup_db_environment(tmp_path, monkeypatch):
     (tmp_path / "volume" / "index").mkdir(parents=True)
     (tmp_path / "volume" / "storage").mkdir(parents=True)
     (tmp_path / "landing").mkdir()
+    (tmp_path / "configs").mkdir()
 
     user_config = {"landing-directory": str((tmp_path / "landing").resolve())}
-    with open(tmp_path / "user.json", "w") as f:
+    with open(tmp_path / "configs" / "user.json", "w") as f:
         json.dump(user_config, f)
-    system_config = {
+    local_config = {
         "db-path": str((tmp_path / "volume" / "index" / "index.db").resolve()),
         "storage-path": str((tmp_path / "volume" / "storage").resolve()),
     }
-    with open(tmp_path / "local.json", "w") as f:
-        json.dump(system_config, f)
+    with open(tmp_path / "configs" / "local.json", "w") as f:
+        json.dump(local_config, f)
 
-    monkeypatch.setattr(db, "CONFIG_DIR", tmp_path)
+    monkeypatch.setenv("PROJECT_ROOT", str(tmp_path))
     yield tmp_path
 
 
 @pytest.fixture
 def setup_bad_db_environment(tmp_path, monkeypatch):
     """Configure invalid database paths and yield the temp directory root."""
-    system_config = {
+    (tmp_path / "configs").mkdir()
+    local_config = {
         "db-path": str((tmp_path / "volume" / "index" / "index.db").resolve()),
         "storage-path": str((tmp_path / "volume" / "index" / "storage").resolve()),
     }
     user_config = {"landing-directory": str((tmp_path / "landing").resolve())}
-    with open(tmp_path / "local.json", "w") as f:
-        json.dump(system_config, f)
-    with open(tmp_path / "user.json", "w") as f:
+    with open(tmp_path / "configs" / "local.json", "w") as f:
+        json.dump(local_config, f)
+    with open(tmp_path / "configs" / "user.json", "w") as f:
         json.dump(user_config, f)
-    monkeypatch.setattr(db, "CONFIG_DIR", tmp_path)
+    monkeypatch.setenv("PROJECT_ROOT", str(tmp_path))
     yield tmp_path
 
 
@@ -106,14 +108,14 @@ def setup_populated_storage(setup_db, setup_files_to_move):
 
 
 def get_index_len():
-    with sqlite3.connect(_get_config("system")["db-path"]) as con:
+    with sqlite3.connect(_get_config("local")["db-path"]) as con:
         res = con.execute("""SELECT *
                              FROM "index" """).fetchall()
     return len(res)
 
 
 def get_storage_len():
-    STORAGE_PATH = _get_config("system")["storage-path"]
+    STORAGE_PATH = _get_config("local")["storage-path"]
     return len(list(Path(STORAGE_PATH).iterdir()))
 
 
@@ -122,21 +124,21 @@ def get_landing_dir_len():
     return len(list(Path(landing_dir).iterdir()))
 
 
-def test_config_types():
-    assert set(_get_config("user")) == {"landing-directory"}
-    assert set(_get_config("system")) == {"db-path", "storage-path"}
+class TestConfigGetter:
+    def test_config_types(self, setup_db_environment):
+        assert set(_get_config("user")) == {"landing-directory"}
+        assert set(_get_config("local")) == {"db-path", "storage-path"}
 
-
-def test_unknown_config_type():
-    with pytest.raises(ValueError):
-        _get_config("unknown")
+    def test_unknown_config_type(self, setup_db_environment):
+        with pytest.raises(ValueError):
+            _get_config("unknown")
 
 
 class TestResolve:
     def test_first_start(self, setup_db_environment):
         resolve_db()
 
-        with sqlite3.connect(Path(_get_config("system")["db-path"])) as con:
+        with sqlite3.connect(Path(_get_config("local")["db-path"])) as con:
             tables = con.execute(
                 "SELECT name FROM sqlite_master WHERE type = 'table'"
             ).fetchall()
