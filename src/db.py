@@ -160,8 +160,8 @@ def _get_feasible_file_set(
         return [i[0] for i in files_to_fetch]
 
 
-def get_healthcheck() -> None:
-    """Compare hashes stored in index and in the storage. Raise if they don't match"""
+def get_healthcheck() -> dict | None:
+    """Compare hashes stored in index and in the storage. Return a mismatch report of None"""
     config = _get_config("local")
     DB_PATH, STORAGE_PATH = Path(config["db-path"]), Path(config["storage-path"])
     with sqlite3.connect(DB_PATH) as con:
@@ -174,10 +174,29 @@ def get_healthcheck() -> None:
     storage_hashes = set(i.name for i in Path(STORAGE_PATH).iterdir())
     index_hashes = set(i[0] for i in index)
 
-    if storage_hashes != index_hashes:
-        raise RuntimeError("Storage and index do not agree")
+    missing_hashes = index_hashes.difference(storage_hashes)
+    if missing_hashes:
+        placeholders = ", ".join("?" for _ in missing_hashes)
+        with sqlite3.connect(DB_PATH) as con:
+            select_query = f"""
+            SELECT
+                id,
+                name
+            FROM "index"
+            WHERE sha256 in ({placeholders})
+            """
+            res = con.execute(select_query, tuple(missing_hashes)).fetchall()
+    else:
+        res = []
 
-    return
+    report = {
+        "index-mismatch": res,
+        "storage-mismatch": storage_hashes - index_hashes
+    }
+
+    if report["index-mismatch"] or report["storage-mismatch"]:
+        return report
+    return None
 
 
 def set_user_config(key: str, value: str) -> None:

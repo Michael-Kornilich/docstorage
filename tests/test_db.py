@@ -5,12 +5,13 @@ import pytest
 from pathlib import Path
 import json
 
-import src.db as db
 from src.db import (
     _get_config,
+    _set_config,
     resolve_db,
     _prepare_insert,
     import_file,
+    get_healthcheck,
 
     fetch_file_set,
 
@@ -124,14 +125,18 @@ def get_landing_dir_len():
     return len(list(Path(landing_dir).iterdir()))
 
 
-class TestConfigGetter:
-    def test_config_types(self, setup_db_environment):
-        assert set(_get_config("user")) == {"landing-directory"}
-        assert set(_get_config("local")) == {"db-path", "storage-path"}
-
-    def test_unknown_config_type(self, setup_db_environment):
+class TestConfigManager:
+    def test_unknown_config_key(self, setup_db_environment):
         with pytest.raises(ValueError):
             _get_config("unknown")
+
+    def test_set_good_config(self, setup_db_environment):
+        _set_config("user", "landing-directory", "new/direcotory")
+        _set_config("local", "db-path", "new/direcotory")
+
+    def test_set_bad_config(self, setup_db_environment):
+        with pytest.raises(KeyError):
+            _set_config("user", "unknown", "new/direcotory")
 
 
 class TestResolve:
@@ -403,3 +408,36 @@ class TestFetch:
         fetch_file_set(name="normal-file-a.pdf", dry_run=False)
         with pytest.raises(FileExistsError):
             fetch_file_set(name="normal-file-a.pdf", dry_run=False)
+
+
+class TestHealthcheck:
+    def test_no_mismatch(self, setup_populated_storage):
+        """Return no report when storage and index contain the same hashes."""
+        assert get_healthcheck() is None
+
+    def test_storage_mismatch(self, setup_populated_storage):
+        """Report an indexed file whose storage file has been removed."""
+        with sqlite3.connect(_get_config("local")["db-path"]) as con:
+            file_hash, = con.execute(
+                'SELECT sha256 FROM "index" WHERE id = 1'
+            ).fetchone()
+
+        Path(_get_config("local")["storage-path"], file_hash).unlink()
+
+        assert get_healthcheck() == {
+            "index-mismatch": [(1, "normal-file-a.pdf")],
+            "storage-mismatch": set(),
+        }
+
+    def test_index_mismatch(self, setup_populated_storage):
+        """Report a storage file whose index row has been removed."""
+        with sqlite3.connect(_get_config("local")["db-path"]) as con:
+            file_hash, = con.execute(
+                'SELECT sha256 FROM "index" WHERE id = 1'
+            ).fetchone()
+            con.execute('DELETE FROM "index" WHERE id = 1')
+
+        assert get_healthcheck() == {
+            "index-mismatch": [],
+            "storage-mismatch": {file_hash},
+        }
