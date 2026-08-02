@@ -8,7 +8,7 @@ from typing import Literal, Sequence
 
 
 def _get_config(tp: Literal["user", "local"]) -> dict[str, str]:
-    """Load and validate either the user or local configuration."""
+    """Helper function to load and validate either the user or local configuration."""
     import os
     CONFIG_DIR = Path(os.environ["PROJECT_ROOT"]) / "configs"
     CONFIG_KEYS = {
@@ -29,6 +29,23 @@ def _get_config(tp: Literal["user", "local"]) -> dict[str, str]:
     if CONFIG_KEYS[tp] != set(config.keys()) or not all(isinstance(value, str) for value in config.values()):
         raise KeyError(f"The {tp} config keys do not match the expected keys.")
     return config
+
+
+def _set_config(tp: Literal["user", "local"], key: str, value: str) -> None:
+    """Helper function to validate and set either the user or local configuration."""
+    config = _get_config(tp)
+    if key not in config:
+        raise KeyError(f"The {key} is invalid.")
+
+    config[key] = value
+
+    import os
+    import json
+
+    config_path = Path(os.environ["PROJECT_ROOT"]) / "configs" / f"{tp}.json"
+    with open(config_path, "w") as f:
+        json.dump(config, f)
+    return
 
 
 # Possible issue: odd paths leading outside the project are unhandled
@@ -161,6 +178,17 @@ def get_healthcheck() -> None:
         raise RuntimeError("Storage and index do not agree")
 
     return
+
+
+def set_user_config(key: str, value: str) -> None:
+    """Exposed function to set the user config"""
+    _set_config("user", key, value)
+    return
+
+
+def get_user_config() -> dict:
+    """Exposed function to get user config"""
+    return _get_config("user")
 
 
 # get/set config - gets and sets config
