@@ -1,7 +1,3 @@
 #!/bin/sh
-export ROOT="/Users/Misha/Documents/Dev/projects/docstorage"
-
-export DB_PATH="${ROOT}/volume/index/index.db"
-export STORAGE_PATH="${ROOT}/volume/storage"
-export CONFIG_PATH="${ROOT}/config.json"
+export PROJECT_ROOT="/Users/Misha/Documents/Dev/projects/docstorage/"
 poetry run python -m src.main "$@"

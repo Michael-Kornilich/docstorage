@@ -1,4 +1,3 @@
-import os
 import sqlite3
 from datetime import date
 import shutil
@@ -6,8 +5,9 @@ import pytest
 from pathlib import Path
 import json
 
+import src.db as db
 from src.db import (
-    _get_env,
+    _get_config,
     resolve_db,
     _prepare_insert,
     import_file,
@@ -37,42 +37,34 @@ def setup_db_environment(tmp_path, monkeypatch):
     (tmp_path / "volume" / "index").mkdir(parents=True)
     (tmp_path / "volume" / "storage").mkdir(parents=True)
     (tmp_path / "landing").mkdir()
-    (tmp_path / "config.json").touch()
 
-    config = {"landing-directory": str((tmp_path / "landing").resolve())}
-    with open(tmp_path / "config.json", "w") as f:
-        json.dump(config, f)
+    user_config = {"landing-directory": str((tmp_path / "landing").resolve())}
+    with open(tmp_path / "user.json", "w") as f:
+        json.dump(user_config, f)
+    system_config = {
+        "db-path": str((tmp_path / "volume" / "index" / "index.db").resolve()),
+        "storage-path": str((tmp_path / "volume" / "storage").resolve()),
+    }
+    with open(tmp_path / "local.json", "w") as f:
+        json.dump(system_config, f)
 
-    monkeypatch.setenv(
-        "DB_PATH",
-        str(tmp_path / "volume" / "index" / "index.db"),
-    )
-    monkeypatch.setenv(
-        "STORAGE_PATH",
-        str(tmp_path / "volume" / "storage"),
-    )
-    monkeypatch.setenv(
-        "CONFIG_PATH",
-        str(tmp_path / "config.json"),
-    )
+    monkeypatch.setattr(db, "CONFIG_DIR", tmp_path)
     yield tmp_path
 
 
 @pytest.fixture
 def setup_bad_db_environment(tmp_path, monkeypatch):
     """Configure invalid database paths and yield the temp directory root."""
-    monkeypatch.setenv(
-        "DB_PATH",
-        str(tmp_path / "volume" / "index" / "index.db"),
-    )
-    monkeypatch.setenv(
-        "STORAGE_PATH",
-        str(tmp_path / "volume" / "index" / "storage"),
-    )
-    monkeypatch.setenv(
-        "CONFIG_PATH",
-        str(tmp_path / "config.json"),
-    )
+    system_config = {
+        "db-path": str((tmp_path / "volume" / "index" / "index.db").resolve()),
+        "storage-path": str((tmp_path / "volume" / "index" / "storage").resolve()),
+    }
+    user_config = {"landing-directory": str((tmp_path / "landing").resolve())}
+    with open(tmp_path / "local.json", "w") as f:
+        json.dump(system_config, f)
+    with open(tmp_path / "user.json", "w") as f:
+        json.dump(user_config, f)
+    monkeypatch.setattr(db, "CONFIG_DIR", tmp_path)
     yield tmp_path
 
 
@@ -113,28 +105,38 @@ def setup_populated_storage(setup_db, setup_files_to_move):
     yield setup_db
 
 
-def test_missing_env_vars():
-    with pytest.raises(LookupError):
-        _get_env()
-
-
 def get_index_len():
-    with sqlite3.connect(_get_env()["DB_PATH"]) as con:
+    with sqlite3.connect(_get_config("system")["db-path"]) as con:
         res = con.execute("""SELECT *
                              FROM "index" """).fetchall()
     return len(res)
 
 
 def get_storage_len():
-    STORAGE_PATH = _get_env()["STORAGE_PATH"]
+    STORAGE_PATH = _get_config("system")["storage-path"]
     return len(list(Path(STORAGE_PATH).iterdir()))
+
+
+def get_landing_dir_len():
+    landing_dir = _get_config("user")["landing-directory"]
+    return len(list(Path(landing_dir).iterdir()))
+
+
+def test_config_types():
+    assert set(_get_config("user")) == {"landing-directory"}
+    assert set(_get_config("system")) == {"db-path", "storage-path"}
+
+
+def test_unknown_config_type():
+    with pytest.raises(ValueError):
+        _get_config("unknown")
 
 
 class TestResolve:
     def test_first_start(self, setup_db_environment):
         resolve_db()
 
-        with sqlite3.connect(Path(os.environ["DB_PATH"])) as con:
+        with sqlite3.connect(Path(_get_config("system")["db-path"])) as con:
             tables = con.execute(
                 "SELECT name FROM sqlite_master WHERE type = 'table'"
             ).fetchall()
@@ -167,7 +169,7 @@ class TestHelperInsert:
         )
         con.commit()
         con.close()
-        # TODO: assert internal state
+        assert get_index_len() == 1
 
     def test_duplicate_insert(self, setup_db):
         con = _prepare_insert(
@@ -361,22 +363,40 @@ class TestFetch:
         assert out is None
         assert get_storage_len() == 3
         assert get_index_len() == 3
+        assert get_landing_dir_len() == 1
 
     def test_empty_fetch(self, setup_populated_storage):
         out = fetch_file_set(id_=-1, dry_run=False)
         assert out is None
         assert get_storage_len() == 3
         assert get_index_len() == 3
+        assert get_landing_dir_len() == 0
 
     def test_missing_fetch(self, setup_populated_storage):
         out = fetch_file_set(name="hello-world", dry_run=False)
         assert out is None
         assert get_storage_len() == 3
         assert get_index_len() == 3
+        assert get_landing_dir_len() == 0
 
     def test_dry_run(self, setup_populated_storage):
         out = fetch_file_set(id_=1, dry_run=True)
         assert out is not None
+        assert get_storage_len() == 3
+        assert get_index_len() == 3
+        assert get_landing_dir_len() == 0
 
     def test_exising_file_fetch(self, setup_populated_storage):
-        pass
+        fetch_file_set(name="normal-file-a.pdf", dry_run=False)
+        fetch_file_set(name="normal-file-a.pdf", dry_run=False, keep_existing=True)
+        assert get_storage_len() == 3
+        assert get_index_len() == 3
+        assert get_landing_dir_len() == 2
+
+        for i in Path(setup_populated_storage / "landing").iterdir():
+            assert i.name in ("normal-file-a.pdf", "doc normal-file-a.pdf")
+
+    def test_existing_but_no_key(self, setup_populated_storage):
+        fetch_file_set(name="normal-file-a.pdf", dry_run=False)
+        with pytest.raises(FileExistsError):
+            fetch_file_set(name="normal-file-a.pdf", dry_run=False)
