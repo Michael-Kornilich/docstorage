@@ -296,7 +296,7 @@ def fetch_file_set(
         tags: Sequence[str] = (),
         dry_run: bool = True,
         keep_existing: bool = False
-) -> None | str:
+) -> None | tuple[tuple[str, ...], ...]:
     """
     Fetch and serve file(s) that match the union (AND) of the specified restrictions.
     If multiple files match the set of restrictions, all matching are fetched.
@@ -325,25 +325,8 @@ def fetch_file_set(
         files_to_fetch = res.fetchall()
 
     if dry_run:
-        display_rows = []
-        for file_id, hash_, name_, description, date_created_, date_added_ in files_to_fetch:
-            if len(description) > 23:
-                description = f"{description[:10]}...{description[-10:]}"
-            display_rows.append((
-                f"({file_id})",
-                name_,
-                description,
-                date.fromisoformat(date_created_).strftime("%Y.%m.%d"),
-                date.fromisoformat(date_added_).strftime("%Y.%m.%d"),
-            ))
-
-        if display_rows:
-            from tabulate import tabulate
-            table = tabulate(display_rows, headers=("Id", "Name", "Description", "Created on", "Added on"))
-        else:
-            table = ""
-        total_files = f"\n\nTotal {len(files_to_fetch)} files."
-        return table + total_files
+        files_to_fetch = tuple(tuple(map(str, row)) for row in files_to_fetch)
+        return files_to_fetch
 
     config = _get_config("user")
 
