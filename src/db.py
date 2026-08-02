@@ -10,7 +10,7 @@ from typing import Literal, Sequence
 def _get_config(tp: Literal["user", "local"]) -> dict[str, str]:
     """Helper function to load and validate either the user or local configuration."""
     import os
-    CONFIG_DIR = Path(os.environ["PROJECT_ROOT"]) / "configs"
+    CONFIG_DIR = Path(os.environ["PROJECT_ROOT"]) / "config"
     CONFIG_KEYS = {
         "user": {"landing-directory"},
         "local": {"db-path", "storage-path"},
@@ -42,7 +42,7 @@ def _set_config(tp: Literal["user", "local"], key: str, value: str) -> None:
     import os
     import json
 
-    config_path = Path(os.environ["PROJECT_ROOT"]) / "configs" / f"{tp}.json"
+    config_path = Path(os.environ["PROJECT_ROOT"]) / "config" / f"{tp}.json"
     with open(config_path, "w") as f:
         json.dump(config, f)
     return

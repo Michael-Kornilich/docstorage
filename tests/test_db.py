@@ -37,16 +37,16 @@ def setup_db_environment(tmp_path, monkeypatch):
     (tmp_path / "volume" / "index").mkdir(parents=True)
     (tmp_path / "volume" / "storage").mkdir(parents=True)
     (tmp_path / "landing").mkdir()
-    (tmp_path / "configs").mkdir()
+    (tmp_path / "config").mkdir()
 
     user_config = {"landing-directory": str((tmp_path / "landing").resolve())}
-    with open(tmp_path / "configs" / "user.json", "w") as f:
+    with open(tmp_path / "config" / "user.json", "w") as f:
         json.dump(user_config, f)
     local_config = {
         "db-path": str((tmp_path / "volume" / "index" / "index.db").resolve()),
         "storage-path": str((tmp_path / "volume" / "storage").resolve()),
     }
-    with open(tmp_path / "configs" / "local.json", "w") as f:
+    with open(tmp_path / "config" / "local.json", "w") as f:
         json.dump(local_config, f)
 
     monkeypatch.setenv("PROJECT_ROOT", str(tmp_path))
@@ -56,15 +56,15 @@ def setup_db_environment(tmp_path, monkeypatch):
 @pytest.fixture
 def setup_bad_db_environment(tmp_path, monkeypatch):
     """Configure invalid database paths and yield the temp directory root."""
-    (tmp_path / "configs").mkdir()
+    (tmp_path / "config").mkdir()
     local_config = {
         "db-path": str((tmp_path / "volume" / "index" / "index.db").resolve()),
         "storage-path": str((tmp_path / "volume" / "index" / "storage").resolve()),
     }
     user_config = {"landing-directory": str((tmp_path / "landing").resolve())}
-    with open(tmp_path / "configs" / "local.json", "w") as f:
+    with open(tmp_path / "config" / "local.json", "w") as f:
         json.dump(local_config, f)
-    with open(tmp_path / "configs" / "user.json", "w") as f:
+    with open(tmp_path / "config" / "user.json", "w") as f:
         json.dump(user_config, f)
     monkeypatch.setenv("PROJECT_ROOT", str(tmp_path))
     yield tmp_path
