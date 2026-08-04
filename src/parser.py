@@ -6,11 +6,10 @@ import re
 
 class UniqueCSV(argparse.Action):
     def __call__(self, parser, namespace, values, option_string=None):
-        if not values:
-            setattr(namespace, self.dest, [])
-            return
+        if values == ",":
+            raise argparse.ArgumentError(self, "Invalid tag value")
 
-        items = [item.strip() for item in values.split(",") if item.strip()]
+        items = tuple(item.strip() for item in values.split(",") if item.strip())
         if len(set(items)) != len(items):
             raise argparse.ArgumentError(self, "The given list contains duplicates")
         setattr(namespace, self.dest, items)
@@ -120,7 +119,7 @@ def _add_filters(parser, *, include_dry_run=True):
     parser.add_argument("--date-created", "-dc", action=ParseDateRange, default=None, metavar="DATE | DATE RANGE",
                         help="date formatted as YYYY-MM-DD or "
                              "a date range formatted as {>|>=}YYYY-MM-DD,{<|<=}YYYY-MM-DD or {<|<=|>|>=|=}YYYY-MM-DD")
-    parser.add_argument("--tags", "-t", action=UniqueCSV, default=[], metavar="TAGS",
+    parser.add_argument("--tags", "-t", action=UniqueCSV, default=None, metavar="TAGS",
                         help="a comma-separated list of tags. "
                              "Such objects are returned that include at least one tag from the specified ones")
     if include_dry_run:
@@ -134,8 +133,8 @@ commands = arg_parser.add_subparsers(dest="command", required=True)
 import_parser = commands.add_parser("import", help="ingest a file")
 import_parser.add_argument("--description", "-de", type=_limited_text, default=None, metavar="TEXT",
                            help="file description (max 300 characters)")
-import_parser.add_argument("--date-created", "-dc", action=ParseDate, default=date.today(), metavar="DATE")
-import_parser.add_argument("--tags", "-t", action=UniqueCSV, default=[])
+import_parser.add_argument("--date-created", "-dc", action=ParseDate, default=None, metavar="DATE")
+import_parser.add_argument("--tags", "-t", action=UniqueCSV, default=None)
 import_parser.add_argument("source", help="path to the file")
 
 fetch_parser = commands.add_parser("fetch", help="copy matching files to the landing directory")
@@ -160,3 +159,7 @@ config_commands.add_parser("list", help="show current configuration")
 set_parser = config_commands.add_parser("set", help="set a configuration field")
 set_parser.add_argument("field")
 set_parser.add_argument("value")
+
+if __name__ == "__main__":
+    res = arg_parser.parse_args()
+    print(res)

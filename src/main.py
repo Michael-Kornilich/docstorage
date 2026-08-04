@@ -1,5 +1,32 @@
 from src.parser import arg_parser
-from src.db import resolve_db, import_file, fetch_file_set, drop_file_set
+from src.db import (
+    resolve_db,
+    import_file,
+    fetch_file_set,
+    drop_file_set,
+    get_healthcheck,
+    get_user_config,
+    set_user_config
+)
+from datetime import date
+
+arg_namespace = arg_parser.parse_args()
+
+try:
+    resolve_db()
+except Exception as err:
+    raise RuntimeError(f"Couldn't resolve database: {type(err).__name__} - {err}") from None
+
+match arg_namespace.command:
+    case "import":
+        source = arg_namespace.source
+        description = arg_namespace.description or ""
+        date_created = arg_namespace.date_created or date.today()
+        tags = arg_namespace.tags or tuple()
+        import_file(source, description, date_created, tags)
+        print("File imported successfully!")
+    case "fetch":
+        pass
 
 # Display fetch dry run
 # display_rows = []
