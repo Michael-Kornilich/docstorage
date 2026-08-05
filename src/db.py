@@ -7,6 +7,8 @@ from datetime import date
 from typing import Literal, Sequence
 
 
+# TODO: better documentation
+
 def _get_config(tp: Literal["user", "local"]) -> dict[str, str]:
     """Helper function to load and validate either the user or local configuration."""
     import os
