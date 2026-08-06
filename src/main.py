@@ -91,4 +91,15 @@ match arg_namespace.command:
         if report is None:
             print("Healthcheck passed: index and storage are in sync.")
         else:
-            print(report)
+            missing_storage = [i[0] for i in report['index-mismatch']]
+            missing_in_index = report["storage-mismatch"]
+            print(f"Files missing in storage: {', '.join(missing_storage)}.")
+            print(f"Files missing in index: {', '.join(missing_in_index)}.")
+    case "config":
+        if arg_namespace.config_command == "set":
+            set_user_config(arg_namespace.field, arg_namespace.value)
+            print("Configuration updated successfully!")
+        elif arg_namespace.config_command == "list":
+            config = get_user_config()
+            for k, v in config.items():
+                print(f"{k}: {v}")

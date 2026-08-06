@@ -175,8 +175,10 @@ def get_healthcheck() -> dict | None:
     Compare hashes stored in index and in the storage. Return a mismatch report or None
 
     Report structure:
-        'index-mismatch': values that are in the index, but are missing from the storage
-        'storage-mismatch': values that are in the storage, but are missing from the index
+
+    'index-mismatch': [id, name] values that are in the index, but are missing from the storage
+
+    'storage-mismatch': [hashes] values that are in the storage, but are missing from the index
     """
     config = _get_config("local")
     DB_PATH, STORAGE_PATH = Path(config["db-path"]), Path(config["storage-path"])
