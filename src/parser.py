@@ -119,6 +119,9 @@ def _add_filters(parser, *, include_dry_run=True):
     parser.add_argument("--date-created", "-dc", action=ParseDateRange, default=None, metavar="DATE | DATE RANGE",
                         help="date formatted as YYYY-MM-DD or "
                              "a date range formatted as {>|>=}YYYY-MM-DD,{<|<=}YYYY-MM-DD or {<|<=|>|>=|=}YYYY-MM-DD")
+    parser.add_argument("--date-added", "-da", action=ParseDateRange, default=None, metavar="DATE | DATE RANGE",
+                        help="date formatted as YYYY-MM-DD or "
+                             "a date range formatted as {>|>=}YYYY-MM-DD,{<|<=}YYYY-MM-DD or {<|<=|>|>=|=}YYYY-MM-DD")
     parser.add_argument("--tags", "-t", action=UniqueCSV, default=None, metavar="TAGS",
                         help="a comma-separated list of tags. "
                              "Such objects are returned that include at least one tag from the specified ones")

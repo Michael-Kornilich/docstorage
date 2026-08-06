@@ -9,6 +9,7 @@ from src.db import (
     set_user_config
 )
 from datetime import date
+from pathlib import Path
 
 arg_namespace = arg_parser.parse_args()
 
@@ -20,7 +21,7 @@ except Exception as err:
 match arg_namespace.command:
     case "import":
         import_file(
-            source=arg_namespace.source,
+            source=Path(arg_namespace.source),
             description=arg_namespace.description if arg_namespace.description else "",
             date_created=arg_namespace.date_created if arg_namespace.date_created else date.today(),
             tags=arg_namespace.tags if arg_namespace.tags else tuple(),
