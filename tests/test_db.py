@@ -140,6 +140,8 @@ class TestConfigManager:
 
 
 class TestResolve:
+    # TODO: test a fully empty resolve
+    
     def test_first_start(self, setup_db_environment):
         resolve_db()
 
@@ -365,6 +367,7 @@ class TestDelete:
 
 
 class TestFetch:
+    # TODO: test all 4 cases of fetching AND fetching into existing with the actual name not existing
     def test_normal_fetch(self, setup_populated_storage):
         out = fetch_file_set(id_=1, dry_run=False)
         assert out is None

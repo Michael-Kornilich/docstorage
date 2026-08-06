@@ -16,7 +16,7 @@ arg_namespace = arg_parser.parse_args()
 try:
     resolve_db()
 except Exception as err:
-    raise RuntimeError(f"Couldn't resolve database: {type(err).__name__} - {err}") from None
+    raise RuntimeError(f"Couldn't resolve database: {type(err).__name__} - {err}") from err
 
 match arg_namespace.command:
     case "import":

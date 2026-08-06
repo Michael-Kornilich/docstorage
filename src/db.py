@@ -86,12 +86,17 @@ def resolve_db() -> None:
                       ) \
                       """.strip()
 
+    if not STORAGE_PATH.exists():
+        print("Storage path not found: creating a new one")
+        STORAGE_PATH.mkdir(parents=True, exist_ok=True)
+
     if not DB_PATH.exists():
         # Won't handle the case where the index does not exist, but files do or the other way around
         # Since this is a very unlikely scenario
         # This code is assumed to be executed on the very first start of the app.
         print("Index not found: creating a new one")
         try:
+            DB_PATH.parent.mkdir(parents=True, exist_ok=True)
             DB_PATH.touch()
         except FileNotFoundError:
             raise FileNotFoundError(f"Failed to create the index: bad path") from None
@@ -162,8 +167,7 @@ def _get_feasible_file_set(
                 SELECT
                     distinct id
                 FROM "index" i LEFT JOIN "tags" t USING (id)
-                WHERE 
-                    {where_restrictions}
+                {"WHERE " + where_restrictions if where_restrictions else ""}
                 """
         res = con.execute(select_query, params)
         files_to_fetch = res.fetchall()
@@ -388,6 +392,8 @@ def fetch_file_set(
         if target_file.exists():
             new_name = "doc " + name_
             shutil.copy2(STORAGE_PATH / hash_, Path(config["landing-directory"]) / new_name)
+        else:
+            shutil.copy2(STORAGE_PATH / hash_, target_file)
 
     return None
 
