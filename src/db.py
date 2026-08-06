@@ -10,7 +10,8 @@ from typing import Literal, Sequence
 # TODO: better documentation
 
 def _get_config(tp: Literal["user", "local"]) -> dict[str, str]:
-    """Helper function to load and validate either the user or local configuration."""
+    """Helper function to load and validate either the user or local configuration.
+    Checks for valid input"""
     import os
     CONFIG_DIR = Path(os.environ["PROJECT_ROOT"]) / "config"
     CONFIG_KEYS = {
@@ -34,7 +35,8 @@ def _get_config(tp: Literal["user", "local"]) -> dict[str, str]:
 
 
 def _set_config(tp: Literal["user", "local"], key: str, value: str) -> None:
-    """Helper function to validate and set either the user or local configuration."""
+    """Helper function to validate and set either the user or local configuration.
+    Checks for valid input"""
     config = _get_config(tp)
     if key not in config:
         raise KeyError(f"The {key} is invalid.")
@@ -52,7 +54,13 @@ def _set_config(tp: Literal["user", "local"], key: str, value: str) -> None:
 
 # Possible issue: odd paths leading outside the project are unhandled
 def resolve_db() -> None:
-    """Create a new index or check the validity of the existing one. Raises if DB and storage paths are misspecified."""
+    """
+    Create a new index or check the validity of the existing one. Raises if DB and storage paths are misspecified.
+
+    Get the storage and db paths from the local.josn config.
+
+    Expected keys: 'db-path', 'storage-path'
+    """
 
     config = _get_config("local")
     DB_PATH, STORAGE_PATH = Path(config["db-path"]), Path(config["storage-path"])
@@ -163,7 +171,13 @@ def _get_feasible_file_set(
 
 
 def get_healthcheck() -> dict | None:
-    """Compare hashes stored in index and in the storage. Return a mismatch report of None"""
+    """
+    Compare hashes stored in index and in the storage. Return a mismatch report or None
+
+    Report structure:
+        'index-mismatch': values that are in the index, but are missing from the storage
+        'storage-mismatch': values that are in the storage, but are missing from the index
+    """
     config = _get_config("local")
     DB_PATH, STORAGE_PATH = Path(config["db-path"]), Path(config["storage-path"])
     with sqlite3.connect(DB_PATH) as con:
@@ -202,7 +216,10 @@ def get_healthcheck() -> dict | None:
 
 
 def set_user_config(key: str, value: str) -> None:
-    """Exposed function to set the user config"""
+    """
+    Exposed function to set the user config
+    Checks key validity
+    """
     _set_config("user", key, value)
     return
 
@@ -266,6 +283,7 @@ def import_file(
     """
     Moves the specified file into the internal storage and adds and entry to the index.
     Owns file checking. Path checking is done upstream
+    Parameters are assumed true
     """
 
     STORAGE_PATH = Path(_get_config("local")["storage-path"])
@@ -323,6 +341,7 @@ def fetch_file_set(
     If multiple files match the set of restrictions, all matching are fetched.
     Unspecified restrictions (None) are ignored.
 
+    None describes a non-existent condition. For example name=None means that the name is irrelevant in selection
     dry_run: If true, do not fetch any files, but return a table + the number of potentially fetched ones.
     """
     local_config = _get_config("local")
