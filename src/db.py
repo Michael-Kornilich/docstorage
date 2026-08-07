@@ -52,10 +52,13 @@ def _set_config(tp: Literal["user", "local"], key: str, value: str) -> None:
     return
 
 
-# Possible issue: odd paths leading outside the project are unhandled
 def resolve_db() -> None:
     """
     Create a new index or check the validity of the existing one. Raises if DB and storage paths are misspecified.
+
+    Create a new storage, if it does not exist.
+
+    For both cases the whole path is created (mkdir -p)
 
     Get the storage and db paths from the local.josn config.
 
@@ -149,8 +152,8 @@ def _get_feasible_file_set(
         if not params.get(param):
             continue
         params.update({
-            f"{param}_lower": params[param].lower,
-            f"{param}_upper": params[param].upper,
+            f"{param}_lower": params[param].lower.isoformat(),
+            f"{param}_upper": params[param].upper.isoformat(),
         })
         params.pop(param)
 
@@ -391,6 +394,8 @@ def fetch_file_set(
         target_file = Path(config["landing-directory"]) / name_
         if target_file.exists():
             new_name = "doc " + name_
+            while (Path(config["landing-directory"]) / new_name).exists():
+                new_name = "doc " + new_name
             shutil.copy2(STORAGE_PATH / hash_, Path(config["landing-directory"]) / new_name)
         else:
             shutil.copy2(STORAGE_PATH / hash_, target_file)

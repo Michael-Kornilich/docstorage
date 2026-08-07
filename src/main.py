@@ -20,13 +20,17 @@ except Exception as err:
 
 match arg_namespace.command:
     case "import":
-        import_file(
-            source=Path(arg_namespace.source),
-            description=arg_namespace.description if arg_namespace.description else "",
-            date_created=arg_namespace.date_created if arg_namespace.date_created else date.today(),
-            tags=arg_namespace.tags if arg_namespace.tags else tuple(),
-        )
-        print("File imported successfully!")
+        try:
+            import_file(
+                source=Path(arg_namespace.source),
+                description=arg_namespace.description if arg_namespace.description else "",
+                date_created=arg_namespace.date_created if arg_namespace.date_created else date.today(),
+                tags=arg_namespace.tags if arg_namespace.tags else tuple(),
+            )
+        except Exception as err:
+            print(f"Couldn't import file: {type(err).__name__} - {err}")
+        else:
+            print("File imported successfully!")
     case "fetch":
         res = fetch_file_set(
             id_=arg_namespace.id,
@@ -88,14 +92,15 @@ match arg_namespace.command:
         if not arg_namespace.dry_run:
             print("File(s) deleted successfully!")
     case "healthcheck":
+        # TODO: rework healthcheck to return a table of index files without storage and a list of names // hashes that are unrecognized by the index
         report = get_healthcheck()
         if report is None:
             print("Healthcheck passed: index and storage are in sync.")
         else:
-            missing_storage = [i[0] for i in report['index-mismatch']]
+            missing_storage = [str(i[0]) for i in report['index-mismatch']]
             missing_in_index = report["storage-mismatch"]
-            print(f"Files missing in storage: {', '.join(missing_storage)}.")
-            print(f"Files missing in index: {', '.join(missing_in_index)}.")
+            print(f"Files missing in storage (ids): {', '.join(missing_storage) or 'All present'}.")
+            print(f"Files missing in index: {', '.join(missing_in_index) or 'All present'}")
     case "config":
         if arg_namespace.config_command == "set":
             set_user_config(arg_namespace.field, arg_namespace.value)

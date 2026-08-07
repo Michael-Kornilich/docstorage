@@ -55,7 +55,7 @@ def setup_db_environment(tmp_path, monkeypatch):
 
 
 @pytest.fixture
-def setup_bad_db_environment(tmp_path, monkeypatch):
+def setup_incomplete_db_environment(tmp_path, monkeypatch):
     """Configure invalid database paths and yield the temp directory root."""
     (tmp_path / "config").mkdir()
     local_config = {
@@ -140,8 +140,7 @@ class TestConfigManager:
 
 
 class TestResolve:
-    # TODO: test a fully empty resolve
-    
+    # TODO: paths pointing towards a file
     def test_first_start(self, setup_db_environment):
         resolve_db()
 
@@ -162,9 +161,8 @@ class TestResolve:
         with pytest.raises(RuntimeError):
             resolve_db()
 
-    def test_bad_path(self, setup_bad_db_environment):
-        with pytest.raises(FileNotFoundError):
-            resolve_db()
+    def test_bad_path(self, setup_incomplete_db_environment):
+        resolve_db()
 
 
 class TestHelperInsert:
@@ -444,3 +442,85 @@ class TestHealthcheck:
             "index-mismatch": [],
             "storage-mismatch": {file_hash},
         }
+
+
+class TestRandom:
+    def test_random_good(self, setup_db):
+        from random import randbytes, randint, choice
+        from string import ascii_letters, digits, punctuation, whitespace
+        from datetime import timedelta
+
+        punctuation_wo_quotes = punctuation.replace('"', "").replace("'", "")
+
+        root = setup_db
+        source_dir = root / "random-source"
+        source_dir.mkdir()
+
+        records = []
+        test_size = 50
+        for index in range(test_size):
+            binary = randbytes(randint(1, 5_242_880))
+            name = f"random-{index}.bin"
+            description = "".join(choice(ascii_letters + digits + whitespace + punctuation_wo_quotes)
+                                  for _ in range(randint(1, 40))).strip()
+            created = date(randint(1980, 2060), randint(1, 12), randint(1, 28))
+            tags = list({
+                "".join(choice(ascii_letters + digits + punctuation_wo_quotes)
+                        for _ in range(randint(1, 8)))
+                for _ in range(randint(1, 4))
+            })
+            source = source_dir / name
+            source.write_bytes(binary)
+            import_file(source, description, created, tags)
+            records.append({
+                "name": name,
+                "bytes": binary,
+                "description": description,
+                "date_created": created,
+                "tags": tags,
+            })
+
+        assert get_index_len() == len(records)
+        assert get_storage_len() == len(records)
+        assert all(not (source_dir / record["name"]).exists() for record in records)
+
+        selected = records[randint(0, test_size - 1)]
+        lower_days = randint(0, 365)
+        upper_days = randint(0, 365)
+        interval = DateInterval(
+            lower=selected["date_created"] - timedelta(days=lower_days),
+            upper=selected["date_created"] + timedelta(days=upper_days),
+            include_lower=True if lower_days == 0 else choice([True, False]),
+            include_upper=True if upper_days == 0 else choice([True, False]),
+        )
+        fetched = fetch_file_set(
+            date_created=interval,
+            tags=selected["tags"][:1],
+            dry_run=True,
+        )
+        assert fetched
+
+        fetch_file_set(
+            date_created=interval,
+            tags=selected["tags"][:1],
+            dry_run=False,
+        )
+        fetched_names = {row[2] for row in fetched}
+        landing_files = {file.name: file.read_bytes()
+                         for file in (root / "landing").iterdir()}
+        assert set(landing_files) == fetched_names
+        for record in records:
+            if record["name"] in fetched_names:
+                assert landing_files[record["name"]] == record["bytes"]
+
+        for file in (root / "landing").iterdir():
+            file.unlink()
+        for row in fetched:
+            drop_file_set(id_=int(row[0]), dry_run=False)
+
+        assert get_index_len() == len(records) - len(fetched)
+        assert get_storage_len() == len(records) - len(fetched)
+        assert get_healthcheck() is None
+
+    def test_random_bad(self, setup_db):
+        pass
