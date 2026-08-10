@@ -25,7 +25,8 @@ from src.utility import DateInterval
 # Fixture Hierarchy
 # - setup_db_environment
 # - setup_files_to_move
-# - setup_bad_db_environment
+# - setup_incomplete_db_environment
+# - setup_file_db_environment
 #
 # - setup_db_environment => setup_db
 # - (setup_db, setup_files_to_move) => setup_populated_storage
@@ -60,7 +61,23 @@ def setup_incomplete_db_environment(tmp_path, monkeypatch):
     (tmp_path / "config").mkdir()
     local_config = {
         "db-path": str((tmp_path / "volume" / "index" / "index.db").resolve()),
-        "storage-path": str((tmp_path / "volume" / "index" / "storage").resolve()),
+        "storage-path": str((tmp_path / "volume" / "storage").resolve()),
+    }
+    user_config = {"landing-directory": str((tmp_path / "landing").resolve())}
+    with open(tmp_path / "config" / "local.json", "w") as f:
+        json.dump(local_config, f)
+    with open(tmp_path / "config" / "user.json", "w") as f:
+        json.dump(user_config, f)
+    monkeypatch.setenv("PROJECT_ROOT", str(tmp_path))
+    yield tmp_path
+
+
+@pytest.fixture
+def setup_file_db_environment(tmp_path, monkeypatch):
+    (tmp_path / "config").mkdir()
+    local_config = {
+        "db-path": str((tmp_path / "volume" / "index" / "index.db").resolve()),
+        "storage-path": str((tmp_path / "volume" / "storage.txt").resolve()),
     }
     user_config = {"landing-directory": str((tmp_path / "landing").resolve())}
     with open(tmp_path / "config" / "local.json", "w") as f:
@@ -161,7 +178,10 @@ class TestResolve:
         with pytest.raises(RuntimeError):
             resolve_db()
 
-    def test_bad_path(self, setup_incomplete_db_environment):
+    def test_incomplete_internal_fs(self, setup_incomplete_db_environment):
+        resolve_db()
+
+    def test_fs_pointing_to_file(self, setup_file_db_environment):
         resolve_db()
 
 

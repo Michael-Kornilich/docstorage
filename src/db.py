@@ -7,8 +7,6 @@ from datetime import date
 from typing import Literal, Sequence
 
 
-# TODO: better documentation
-
 def _get_config(tp: Literal["user", "local"]) -> dict[str, str]:
     """Helper function to load and validate either the user or local configuration.
     Checks for valid input"""
@@ -351,7 +349,7 @@ def fetch_file_set(
     Unspecified restrictions (None) are ignored.
 
     None describes a non-existent condition. For example name=None means that the name is irrelevant in selection
-    dry_run: If true, do not fetch any files, but return a table + the number of potentially fetched ones.
+    dry_run: If true, do not fetch any files, but return a tuple of potentially fetched ones.
     """
     local_config = _get_config("local")
     DB_PATH, STORAGE_PATH = Path(local_config["db-path"]), Path(local_config["storage-path"])
