@@ -12,6 +12,7 @@ from src.db import (
     _prepare_insert,
     import_file,
     get_healthcheck,
+    get_overview,
 
     fetch_file_set,
 
@@ -462,6 +463,20 @@ class TestHealthcheck:
             "index-mismatch": [],
             "storage-mismatch": {file_hash},
         }
+
+
+class TestGetOverview:
+    def test_empty(self, setup_db):
+        res = get_overview()
+        assert set(res.keys()) == {"total-n-files", "unique-tags", "min-max-dates"}
+        assert res["n-total-files"] == 0, "Files"
+        assert res["unique-tags"] == tuple(), "Tags"
+        assert res["min-max-dates"] == tuple(), "Dates"
+
+    def test_normal(self, setup_populated_storage):
+        res = get_overview()
+        assert res == {"total-n-files": 3, "unique-tags": tuple("tag" + str(i) for i in range(1, 6)),
+                       "min-max-dates": (date(2024, 1, 1), date(2026, 1, 1))}
 
 
 class TestRandom:

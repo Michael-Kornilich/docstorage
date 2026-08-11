@@ -6,7 +6,8 @@ from src.db import (
     drop_file_set,
     get_healthcheck,
     get_user_config,
-    set_user_config
+    set_user_config,
+    get_overview
 )
 from datetime import date
 from pathlib import Path
@@ -153,6 +154,13 @@ match arg_namespace.command:
             if missing_in_index:
                 print(f"The following files were found unexpectedly in the storage: "
                       f"{', '.join(missing_in_index)}")
+    case "overview":
+        res = get_overview()
+        print(f"Total files: {res['n-total-files']}")
+        print(f"Tags used: {", ".join(res['unique-tags']) or 'None'}")
+        if res["n-total-files"] > 0:
+            print(f"Min date created: {res['min-max-dates'][0]}")
+            print(f"Max date created: {res['min-max-dates'][1]}")
     case "config":
         if arg_namespace.config_command == "set":
             set_user_config(arg_namespace.field, arg_namespace.value)

@@ -76,7 +76,7 @@ def resolve_db() -> None:
                            description  TEXT NOT NULL,
                            date_created TEXT NOT NULL,
                            date_added   TEXT NOT NULL DEFAULT CURRENT_DATE
-                       ) \
+                       )
                        """.strip()
     create_tags_sql = """
                       CREATE TABLE "tags"
@@ -84,7 +84,7 @@ def resolve_db() -> None:
                           id  INTEGER REFERENCES "index" (id) ON DELETE CASCADE,
                           tag TEXT NOT NULL,
                           PRIMARY KEY (id, tag)
-                      ) \
+                      )
                       """.strip()
 
     if not STORAGE_PATH.exists():
@@ -399,6 +399,33 @@ def fetch_file_set(
             shutil.copy2(STORAGE_PATH / hash_, target_file)
 
     return None
+
+
+def get_overview() -> dict:
+    """
+    Returns a dictionary of total number of files stored ("total-n-files": int),
+    unique tags ("unique-tags": tuple), and the first and last date created ("min-max-dates": tuple with dates, or an empty tuple)
+    """
+    DB_PATH = Path(_get_config("local")["db-path"])
+    with sqlite3.connect(DB_PATH) as con:
+        ids = con.execute("""SELECT COUNT(distinct id)
+                             FROM "index" """).fetchall()
+        n_files = ids[0][0]
+
+        tags = con.execute("""SELECT distinct tag
+                              FROM tags""").fetchall()
+        tags = tuple(tag[0] for tag in tags)
+
+        border_dates = con.execute("""SELECT min(date_created), max(date_created)
+                                      FROM "index" """).fetchall()
+        border_dates = border_dates[0]
+
+        if all(border_dates):
+            border_dates = tuple(date.fromisoformat(i) for i in border_dates)
+        else:
+            border_dates = tuple()
+
+    return {"n-total-files": n_files, "unique-tags": tags, "min-max-dates": border_dates}
 
 
 # --------------------------------------
