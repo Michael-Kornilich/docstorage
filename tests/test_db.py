@@ -22,7 +22,8 @@ from src.db import (
 )
 from src.utility import DateInterval
 
-# TODO: Check (file) tags are deleted when deleting files
+# TODO: fix health check - do not display en empty table
+# TODO: Bugfix - tags are not deleted on deletion (+ test the behavior)
 # Fixture Hierarchy
 # - setup_db_environment
 # - setup_files_to_move
