@@ -145,7 +145,7 @@ _add_filters(fetch_parser)
 fetch_parser.add_argument("--keep-existing", action="store_true", default=False,
                           help="keep the files in the landing directory. If the directory is not clean and the flag is not given - error.")
 
-overview_parser = commands.add_parser("overview", help="show a document overview")
+overview_parser = commands.add_parser("overview", help="show the storage overview")
 overview_parser.set_defaults(overview=True)
 
 delete_parser = commands.add_parser("delete", help="delete matching documents")

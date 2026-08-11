@@ -94,13 +94,13 @@ Flags:
 - --tags | -t: accepts a comma-separated string. Optional: defaults to an empty list
 
 Positional arguments:
-- filepath: string. Ther parser does NOT check for validity (this is handeled by the main)
+- filepath: string. Their parser does NOT check for validity (this is handled by the main)
 
 **fetch**
 
 Flags:
 - --name | -n: file name
-- --id: accepts an integer. The validation is handeled by the main. Optional: defaults to None
+- --id: accepts an integer. The validation is handled by the main. Optional: defaults to None
 - --description-contains: accepts a string (300 characters limit). Optional: defaults to None
 - --date-created | -dc: accepts a YYYY-MM-DD date OR a date range. Optional: defaults to None
 The date range should have the following form: {<|<=|>|>=|=}YYYY-MM-DD,{<|<=|>|>=|=}YYYY-MM-DD or {<|<=|>|>=|=}YYYY-MM-DD as a shortcut.
@@ -110,7 +110,7 @@ The resulting object in the Namespace object should be a DateRange data class wi
 - --keep-existing: a boolean flag. Does not accept a value. Optional: defaults to false
 - --dry-run: a boolean flag. If invoked nothing changes until the actual serving. Then the app just prints which files will be fetched without acutally fetching them
 
-Positional aguments:
+Positional arguments:
 - name. This is mutually exclusive with --name flag. Either the name positional argument or the flag. Can work in combination with other flags
 
 **overview**
