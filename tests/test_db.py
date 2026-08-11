@@ -22,7 +22,6 @@ from src.db import (
 )
 from src.utility import DateInterval
 
-# TODO: fix health check - do not display en empty table
 # TODO: Bugfix - tags are not deleted on deletion (+ test the behavior)
 # Fixture Hierarchy
 # - setup_db_environment

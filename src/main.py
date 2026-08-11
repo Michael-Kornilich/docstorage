@@ -147,13 +147,18 @@ match arg_namespace.command:
         else:
             from tabulate import tabulate
 
-            print("Index has the following entries without corresponding storage items:", end="\n\n")
-            print(tabulate(report["index-mismatch"], headers=("Id", "Name")), end="\n\n")
+            if report["index-mismatch"]:
+                print("Index has the following entries without corresponding storage items:", end="\n\n")
+                print(tabulate(report["index-mismatch"], headers=("Id", "Name")), end="\n\n")
+            else:
+                print("Index has the following entries without corresponding storage items: None", end="\n\n")
 
             missing_in_index = report["storage-mismatch"]
             if missing_in_index:
                 print(f"The following files were found unexpectedly in the storage: "
                       f"{', '.join(missing_in_index)}")
+            else:
+                print(f"The following files were found unexpectedly in the storage: Nonea")
     case "overview":
         res = get_overview()
         print(f"Total files: {res['n-total-files']}")
