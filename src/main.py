@@ -33,9 +33,9 @@ def tabulate_fileset(file_set: tuple[tuple[str, ...], ...]) -> str:
         display_rows.append((
             f"({file_id})",
             name_ or "-",
-            description or "-",
-            date.fromisoformat(date_created_).strftime("%Y.%m.%d") if date_created_ else "-",
-            date.fromisoformat(date_added_).strftime("%Y.%m.%d") if date_added_ else "-",
+            description,
+            date.fromisoformat(date_created_).strftime("%Y.%m.%d") if date_created_ else "",
+            date.fromisoformat(date_added_).strftime("%Y.%m.%d") if date_added_ else "",
         ))
 
     if display_rows:
@@ -121,7 +121,7 @@ match arg_namespace.command:
             print(f"Couldn't inspect files: {err} ({type(err).__name__})")
             quit()
 
-        if len(n_matching_files) > 1 and not arg_namespace.all:
+        if n_matching_files > 1 and not arg_namespace.all:
             print(f"Multiple files ({n_matching_files}) match the given criteria. Use --all to delete all of them.",
                   end="\n\n")
             quit()

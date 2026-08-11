@@ -22,7 +22,7 @@ from src.db import (
 )
 from src.utility import DateInterval
 
-
+# TODO: Check (file) tags are deleted when deleting files
 # Fixture Hierarchy
 # - setup_db_environment
 # - setup_files_to_move

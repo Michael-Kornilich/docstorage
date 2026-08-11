@@ -534,6 +534,11 @@ def drop_file_set(
         """)
         files_to_drop = res.fetchall()
 
+        con.execute(f"""
+        DELETE FROM "index" 
+        WHERE id in ({", ".join(ids)})
+        """)
+
     if dry_run:
         return len(files_to_drop)
 
