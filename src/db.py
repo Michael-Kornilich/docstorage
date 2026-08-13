@@ -515,6 +515,7 @@ def drop_file_set(
     Drop file(s) that match the union (AND) of the specified restrictions.
     If multiple files match the set of restrictions, all matching are dropped.
     Unspecified restrictions (None) are ignored.
+    Tags: A file is considered a match if intersect of its tags is non-empty with the given tags
 
     dry_run: If true, do not drop any files, but return the number of potentially dropped files.
     """

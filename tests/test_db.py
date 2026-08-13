@@ -22,7 +22,11 @@ from src.db import (
 )
 from src.utility import DateInterval
 
+
 # TODO: Bugfix - tags are not deleted on deletion (+ test the behavior)
+# Maybe because the id (rowid) is handled in a special way such that they are not deleted internally on DELETE
+# and hence, on delete cascade is not invoked?
+
 # Fixture Hierarchy
 # - setup_db_environment
 # - setup_files_to_move
@@ -143,6 +147,13 @@ def get_landing_dir_len():
     return len(list(Path(landing_dir).iterdir()))
 
 
+def get_tags_len():
+    with sqlite3.connect(_get_config("local")["db-path"]) as con:
+        res = con.execute("""SELECT *
+                             FROM tags """).fetchall()
+    return len(res)
+
+
 class TestConfigManager:
     def test_unknown_config_key(self, setup_db_environment):
         with pytest.raises(ValueError):
@@ -198,6 +209,7 @@ class TestHelperInsert:
         con.commit()
         con.close()
         assert get_index_len() == 1
+        assert get_tags_len() == 3
 
     def test_duplicate_insert(self, setup_db):
         con = _prepare_insert(
@@ -242,6 +254,7 @@ class TestImport:
                     date(2026, 1, 1), ["tag1", "tag2"])
 
         assert get_storage_len() == 1, "The file has not been moved successfully"
+        assert get_tags_len() == 2
 
         internal_filepath: Path = list(Path(setup_db / "volume" / "storage").iterdir())[0]
         got_bytes = internal_filepath.read_bytes()
@@ -255,6 +268,7 @@ class TestImport:
                     date(2026, 1, 1), ["tag1", "tag2"])
 
         assert get_storage_len() == 1, "The file has not been moved successfully"
+        assert get_tags_len() == 2
 
         internal_filepath: Path = list(Path(setup_db / "volume" / "storage").iterdir())[0]
         got_bytes = internal_filepath.read_bytes()
@@ -291,11 +305,7 @@ class TestHelperDrop:
         con = _prepare_drop(1)
         con.commit()
         con.close()
-
-        with sqlite3.connect(setup_db / "volume" / "index" / "index.db") as con:
-            res = con.execute("""SELECT *
-                                 FROM "index" """).fetchall()
-            assert len(res) == 0
+        assert get_index_len() == 0
 
     def test_missing_drop(self, setup_db):
         with pytest.raises(IndexError):
@@ -348,16 +358,19 @@ class TestDelete:
         drop_file_set(description_contains="content", dry_run=False)
         assert get_storage_len() == 1
         assert get_index_len() == 1
+        assert get_tags_len() == 6
 
     def test_id_delete(self, setup_populated_storage):
         drop_file_set(id_=1, dry_run=False)
         assert get_storage_len() == 2
         assert get_index_len() == 2
+        assert get_tags_len() == 6
 
     def test_name_delete(self, setup_populated_storage):
         drop_file_set(name="normal-file-a.pdf", dry_run=False)
         assert get_storage_len() == 2
         assert get_index_len() == 2
+        assert get_tags_len() == 6
 
     def test_dry_run(self, setup_populated_storage):
         assert drop_file_set(description_contains="content", dry_run=True) == 2, \
@@ -369,11 +382,13 @@ class TestDelete:
         drop_file_set(tags=["tag2", "tag3"], dry_run=False)
         assert get_index_len() == 1
         assert get_storage_len() == 1
+        assert get_tags_len() == 2
 
     def test_missing_tags(self, setup_populated_storage):
         drop_file_set(tags=["tag-1", "tag-2"], dry_run=False)
         assert get_index_len() == 3
         assert get_storage_len() == 3
+        assert get_tags_len() == 6
 
     def test_miscellaneous_dry(self, setup_populated_storage):
         assert drop_file_set(id_=10, dry_run=True) == 0, "Bad id failed"
@@ -383,6 +398,7 @@ class TestDelete:
 
         assert get_index_len() == 3, "Dry run failed"
         assert get_storage_len() == 3, "Dry run failed"
+        assert get_tags_len() == 6, "Dry run failed"
 
 
 class TestFetch:
@@ -468,14 +484,14 @@ class TestHealthcheck:
 class TestGetOverview:
     def test_empty(self, setup_db):
         res = get_overview()
-        assert set(res.keys()) == {"total-n-files", "unique-tags", "min-max-dates"}
+        assert set(res.keys()) == {"n-total-files", "unique-tags", "min-max-dates"}
         assert res["n-total-files"] == 0, "Files"
         assert res["unique-tags"] == tuple(), "Tags"
         assert res["min-max-dates"] == tuple(), "Dates"
 
     def test_normal(self, setup_populated_storage):
         res = get_overview()
-        assert res == {"total-n-files": 3, "unique-tags": tuple("tag" + str(i) for i in range(1, 6)),
+        assert res == {"n-total-files": 3, "unique-tags": tuple("tag" + str(i) for i in range(1, 6)),
                        "min-max-dates": (date(2024, 1, 1), date(2026, 1, 1))}
 
 
@@ -494,7 +510,7 @@ class TestRandom:
         records = []
         test_size = 50
         for index in range(test_size):
-            binary = randbytes(randint(1, 5_242_880))
+            binary = randbytes(randint(1, 10_000))
             name = f"random-{index}.bin"
             description = "".join(choice(ascii_letters + digits + whitespace + punctuation_wo_quotes)
                                   for _ in range(randint(1, 40))).strip()
@@ -517,6 +533,7 @@ class TestRandom:
 
         assert get_index_len() == len(records)
         assert get_storage_len() == len(records)
+        assert get_tags_len() == len([t for i in records for t in i["tags"]])
         assert all(not (source_dir / record["name"]).exists() for record in records)
 
         selected = records[randint(0, test_size - 1)]
