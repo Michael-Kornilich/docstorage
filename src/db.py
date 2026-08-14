@@ -24,6 +24,7 @@ def _open_transaction() -> sqlite3.Connection:
         con.execute("COMMIT")
     finally:
         con.close()
+    return
 
 
 def resolve_db() -> None:
@@ -245,7 +246,7 @@ def import_file(
                 target_file.write(binary)
             source.unlink()
     except Exception as err:
-        Path(STORAGE_PATH / hexdigest).unlink()
+        Path(STORAGE_PATH / hexdigest).unlink(missing_ok=True)
         raise ImportError(f"Could not update the index: {type(err).__name__} - {err}") from err
 
     return None
@@ -443,7 +444,7 @@ def drop_file_set(
         with _open_transaction() as con:
             con.execute("""DELETE
                            FROM "index"
-                           WHERE id = ?""", (id_,))
+                           WHERE id = ?""", (i,))
             Path(STORAGE_PATH / hash_).unlink(missing_ok=True)
 
     return None

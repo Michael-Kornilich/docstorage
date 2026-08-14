@@ -18,10 +18,6 @@ from src.db import (
 from src.utility import DateInterval, get_config, set_config
 
 
-# TODO: Bugfix - tags are not deleted on deletion (+ test the behavior)
-# Maybe because the id (rowid) is handled in a special way such that they are not deleted internally on DELETE
-# and hence, on delete cascade is not invoked?
-
 # Fixture Hierarchy
 # - setup_db_environment
 # - setup_files_to_move
@@ -241,7 +237,10 @@ class TestImport:
                         date(2026, 1, 1), ["tag1", "tag2"])
 
     def test_duplicate_tags(self, setup_db, setup_files_to_move):
-        raise NotImplementedError("Not yet written.")
+        filepath = setup_files_to_move / "normal-file-a.pdf"
+        with pytest.raises(ImportError):
+            import_file(filepath, "some description",
+                        date(2026, 1, 1), ["tag", "tag"])
 
     # Missing file and directory will not be tested here
 
@@ -292,19 +291,19 @@ class TestDelete:
         drop_file_set(description_contains="content", dry_run=False)
         assert get_storage_len() == 1
         assert get_index_len() == 1
-        assert get_tags_len() == 6
+        assert get_tags_len() == 2
 
     def test_id_delete(self, setup_populated_storage):
         drop_file_set(id_=1, dry_run=False)
         assert get_storage_len() == 2
         assert get_index_len() == 2
-        assert get_tags_len() == 6
+        assert get_tags_len() == 4
 
     def test_name_delete(self, setup_populated_storage):
         drop_file_set(name="normal-file-a.pdf", dry_run=False)
         assert get_storage_len() == 2
         assert get_index_len() == 2
-        assert get_tags_len() == 6
+        assert get_tags_len() == 4
 
     def test_dry_run(self, setup_populated_storage):
         assert drop_file_set(description_contains="content", dry_run=True) == 2, \
@@ -325,7 +324,7 @@ class TestDelete:
         assert get_tags_len() == 6
 
     def test_missing_drop(self, setup_populated_storage):
-        raise NotImplementedError("Not yet written.")
+        drop_file_set(id_=0, dry_run=False)
 
     def test_miscellaneous_dry(self, setup_populated_storage):
         assert drop_file_set(id_=10, dry_run=True) == 0, "Bad id failed"
