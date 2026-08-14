@@ -1,5 +1,7 @@
 from datetime import date
 from dataclasses import dataclass
+from pathlib import Path
+from typing import Literal
 
 
 @dataclass(frozen=True)
@@ -44,3 +46,45 @@ class DateInterval:
             return True
 
         return False
+
+
+def get_config(tp: Literal["user", "local"]) -> dict[str, str]:
+    """Load and validate either the user or local configuration.
+    Checks for valid config keys"""
+    import os
+    CONFIG_DIR = Path(os.environ["PROJECT_ROOT"]) / "config"
+    CONFIG_KEYS = {
+        "user": {"landing-directory"},
+        "local": {"db-path", "storage-path"},
+    }
+    if tp not in ("user", "local"):
+        raise ValueError(f"Unknown config type: {tp}")
+
+    config_path = CONFIG_DIR / f"{tp}.json"
+    try:
+        import json
+        with open(config_path, mode="r") as f:
+            config = json.load(f)
+    except Exception as err:
+        raise ImportError(f"Failed to load {tp} config: {err}") from err
+
+    if CONFIG_KEYS[tp] != set(config.keys()) or not all(isinstance(value, str) for value in config.values()):
+        raise KeyError(f"The {tp} config keys do not match the expected keys.")
+    return config
+
+
+def set_config(tp: Literal["user", "local"], key: str, value: str) -> None:
+    """Validate input and set either the user or local configuration."""
+    config = get_config(tp)
+    if key not in config:
+        raise KeyError(f"The {key} is invalid.")
+
+    config[key] = value
+
+    import os
+    import json
+
+    config_path = Path(os.environ["PROJECT_ROOT"]) / "config" / f"{tp}.json"
+    with open(config_path, "w") as f:
+        json.dump(config, f)
+    return

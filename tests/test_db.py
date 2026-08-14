@@ -6,21 +6,16 @@ from pathlib import Path
 import json
 
 from src.db import (
-    _get_config,
-    _set_config,
     resolve_db,
-    _prepare_insert,
+    _open_transaction,
     import_file,
     get_healthcheck,
     get_overview,
-
     fetch_file_set,
-
-    _prepare_drop,
     _build_where_restrictions,
     drop_file_set,
 )
-from src.utility import DateInterval
+from src.utility import DateInterval, get_config, set_config
 
 
 # TODO: Bugfix - tags are not deleted on deletion (+ test the behavior)
@@ -131,24 +126,24 @@ def setup_populated_storage(setup_db, setup_files_to_move):
 
 
 def get_index_len():
-    with sqlite3.connect(_get_config("local")["db-path"]) as con:
+    with sqlite3.connect(get_config("local")["db-path"]) as con:
         res = con.execute("""SELECT *
                              FROM "index" """).fetchall()
     return len(res)
 
 
 def get_storage_len():
-    STORAGE_PATH = _get_config("local")["storage-path"]
+    STORAGE_PATH = get_config("local")["storage-path"]
     return len(list(Path(STORAGE_PATH).iterdir()))
 
 
 def get_landing_dir_len():
-    landing_dir = _get_config("user")["landing-directory"]
+    landing_dir = get_config("user")["landing-directory"]
     return len(list(Path(landing_dir).iterdir()))
 
 
 def get_tags_len():
-    with sqlite3.connect(_get_config("local")["db-path"]) as con:
+    with sqlite3.connect(get_config("local")["db-path"]) as con:
         res = con.execute("""SELECT *
                              FROM tags """).fetchall()
     return len(res)
@@ -157,15 +152,15 @@ def get_tags_len():
 class TestConfigManager:
     def test_unknown_config_key(self, setup_db_environment):
         with pytest.raises(ValueError):
-            _get_config("unknown")
+            get_config("unknown")
 
     def test_set_good_config(self, setup_db_environment):
-        _set_config("user", "landing-directory", "new/direcotory")
-        _set_config("local", "db-path", "new/direcotory")
+        set_config("user", "landing-directory", "new/direcotory")
+        set_config("local", "db-path", "new/direcotory")
 
     def test_set_bad_config(self, setup_db_environment):
         with pytest.raises(KeyError):
-            _set_config("user", "unknown", "new/direcotory")
+            set_config("user", "unknown", "new/direcotory")
 
 
 class TestResolve:
@@ -173,7 +168,7 @@ class TestResolve:
     def test_first_start(self, setup_db_environment):
         resolve_db()
 
-        with sqlite3.connect(Path(_get_config("local")["db-path"])) as con:
+        with sqlite3.connect(Path(get_config("local")["db-path"])) as con:
             tables = con.execute(
                 "SELECT name FROM sqlite_master WHERE type = 'table'"
             ).fetchall()
@@ -195,55 +190,6 @@ class TestResolve:
 
     def test_fs_pointing_to_file(self, setup_file_db_environment):
         resolve_db()
-
-
-class TestHelperInsert:
-    def test_normal_insert(self, setup_db):
-        con = _prepare_insert(
-            "test.pdf",
-            "4c2e9e6da31a64c70623619c449a040968cdbea85945bf384fa30ed2d5d24fa3",
-            "This is a test file.",
-            date(2026, 1, 1),
-            ["test", "tag", "tag2"]
-        )
-        con.commit()
-        con.close()
-        assert get_index_len() == 1
-        assert get_tags_len() == 3
-
-    def test_duplicate_insert(self, setup_db):
-        con = _prepare_insert(
-            "test.pdf",
-            "4c2e9e6da31a64c70623619c449a040968cdbea85945bf384fa30ed2d5d24fa3",
-            "This is a test file.",
-            date(2026, 1, 1),
-            ["test", "tag", "tag2"]
-        )
-        con.commit()
-        con.close()
-
-        with pytest.raises(RuntimeError):
-            con = _prepare_insert(
-                "test.pdf",
-                "4c2e9e6da31a64c70623619c449a040968cdbea85945bf384fa30ed2d5d24fa3",
-                "This is a test file.",
-                date(2026, 1, 1),
-                ["test", "tag", "tag2"]
-            )
-            con.commit()
-            con.close()
-
-    def test_duplicate_tags(self, setup_db):
-        with pytest.raises(RuntimeError):
-            con = _prepare_insert(
-                "test.pdf",
-                "4c2e9e6da31a64c70623619c449a040968cdbea85945bf384fa30ed2d5d24fa3",
-                "This is a test file.",
-                date(2026, 1, 1),
-                ["tag", "tag"]
-            )
-            con.commit()
-            con.close()
 
 
 class TestImport:
@@ -294,22 +240,10 @@ class TestImport:
             import_file(filepath, "some description",
                         date(2026, 1, 1), ["tag1", "tag2"])
 
+    def test_duplicate_tags(self, setup_db, setup_files_to_move):
+        raise NotImplementedError("Not yet written.")
+
     # Missing file and directory will not be tested here
-
-
-class TestHelperDrop:
-    def test_normal_drop(self, setup_db, setup_files_to_move):
-        import_file(setup_files_to_move / "normal-file-a.pdf", "Some description",
-                    date(2026, 1, 1), ["tag1", "tag2"])
-
-        con = _prepare_drop(1)
-        con.commit()
-        con.close()
-        assert get_index_len() == 0
-
-    def test_missing_drop(self, setup_db):
-        with pytest.raises(IndexError):
-            _prepare_drop(1)
 
 
 class TestWhereClauseBuild:
@@ -390,6 +324,9 @@ class TestDelete:
         assert get_storage_len() == 3
         assert get_tags_len() == 6
 
+    def test_missing_drop(self, setup_populated_storage):
+        raise NotImplementedError("Not yet written.")
+
     def test_miscellaneous_dry(self, setup_populated_storage):
         assert drop_file_set(id_=10, dry_run=True) == 0, "Bad id failed"
         assert drop_file_set(name="hello-world", dry_run=True) == 0, "Bad name failed"
@@ -455,12 +392,12 @@ class TestHealthcheck:
 
     def test_storage_mismatch(self, setup_populated_storage):
         """Report an indexed file whose storage file has been removed."""
-        with sqlite3.connect(_get_config("local")["db-path"]) as con:
+        with sqlite3.connect(get_config("local")["db-path"]) as con:
             file_hash, = con.execute(
                 'SELECT sha256 FROM "index" WHERE id = 1'
             ).fetchone()
 
-        Path(_get_config("local")["storage-path"], file_hash).unlink()
+        Path(get_config("local")["storage-path"], file_hash).unlink()
 
         assert get_healthcheck() == {
             "index-mismatch": [(1, "normal-file-a.pdf")],
@@ -469,7 +406,7 @@ class TestHealthcheck:
 
     def test_index_mismatch(self, setup_populated_storage):
         """Report a storage file whose index row has been removed."""
-        with sqlite3.connect(_get_config("local")["db-path"]) as con:
+        with sqlite3.connect(get_config("local")["db-path"]) as con:
             file_hash, = con.execute(
                 'SELECT sha256 FROM "index" WHERE id = 1'
             ).fetchone()

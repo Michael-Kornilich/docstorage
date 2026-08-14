@@ -1,53 +1,29 @@
 """Database- and storage-related functions"""
 import sqlite3
 import shutil
-from src.utility import DateInterval
+from src.utility import DateInterval, get_config
 from pathlib import Path
 from datetime import date
-from typing import Literal, Sequence
+from typing import Sequence
+from contextlib import contextmanager
 
 
-def _get_config(tp: Literal["user", "local"]) -> dict[str, str]:
-    """Helper function to load and validate either the user or local configuration.
-    Checks for valid input"""
-    import os
-    CONFIG_DIR = Path(os.environ["PROJECT_ROOT"]) / "config"
-    CONFIG_KEYS = {
-        "user": {"landing-directory"},
-        "local": {"db-path", "storage-path"},
-    }
-    if tp not in ("user", "local"):
-        raise ValueError(f"Unknown config type: {tp}")
-
-    config_path = CONFIG_DIR / f"{tp}.json"
+@contextmanager
+def _open_transaction() -> sqlite3.Connection:
+    """Yield an open SQLite transaction with PRAGMA foreign_keys = ON"""
+    DB_PATH = get_config("local")["db-path"]
+    con = sqlite3.connect(DB_PATH)
+    con.execute("PRAGMA foreign_keys = ON")
+    con.execute("BEGIN")
     try:
-        import json
-        with open(config_path, mode="r") as f:
-            config = json.load(f)
-    except Exception as err:
-        raise ImportError(f"Failed to load {tp} config: {err}") from err
-
-    if CONFIG_KEYS[tp] != set(config.keys()) or not all(isinstance(value, str) for value in config.values()):
-        raise KeyError(f"The {tp} config keys do not match the expected keys.")
-    return config
-
-
-def _set_config(tp: Literal["user", "local"], key: str, value: str) -> None:
-    """Helper function to validate and set either the user or local configuration.
-    Checks for valid input"""
-    config = _get_config(tp)
-    if key not in config:
-        raise KeyError(f"The {key} is invalid.")
-
-    config[key] = value
-
-    import os
-    import json
-
-    config_path = Path(os.environ["PROJECT_ROOT"]) / "config" / f"{tp}.json"
-    with open(config_path, "w") as f:
-        json.dump(config, f)
-    return
+        yield con
+    except Exception:
+        con.execute("ROLLBACK")
+        raise
+    else:
+        con.execute("COMMIT")
+    finally:
+        con.close()
 
 
 def resolve_db() -> None:
@@ -63,7 +39,7 @@ def resolve_db() -> None:
     Expected keys: 'db-path', 'storage-path'
     """
 
-    config = _get_config("local")
+    config = get_config("local")
     DB_PATH, STORAGE_PATH = Path(config["db-path"]), Path(config["storage-path"])
 
     # id: SQLite's specific alias for rowid. The primary key is automatically generated
@@ -105,10 +81,10 @@ def resolve_db() -> None:
             raise RuntimeError(f"An unexpected exception occured while creating index: "
                                f"{type(err).__name__} - {err}") from err
 
-        with sqlite3.connect(DB_PATH) as con:
-            con.execute("PRAGMA foreign_keys = ON")
+        with _open_transaction() as con:
             con.execute(create_index_sql)
             con.execute(create_tags_sql)
+
     else:
         # Assume existing DB scheme / data has not been tampered with. Check only for a valid file.
         # Otherwise, handling is too complicated
@@ -137,7 +113,7 @@ def _get_feasible_file_set(
     Helper function to return a set of file ids that fulfill given restrictions.
     Returns a list of ids
     """
-    config = _get_config("local")
+    config = get_config("local")
     DB_PATH, STORAGE_PATH = Path(config["db-path"]), Path(config["storage-path"])
 
     where_restrictions = _build_where_restrictions(bool(id_), bool(name), bool(description_contains),
@@ -185,9 +161,9 @@ def get_healthcheck() -> dict | None:
 
     'storage-mismatch': [hashes] values that are in the storage, but are missing from the index
     """
-    config = _get_config("local")
-    DB_PATH, STORAGE_PATH = Path(config["db-path"]), Path(config["storage-path"])
-    with sqlite3.connect(DB_PATH) as con:
+    config = get_config("local")
+    _, STORAGE_PATH = Path(config["db-path"]), Path(config["storage-path"])
+    with _open_transaction() as con:
         select_query = f"""
         SELECT
             sha256
@@ -200,14 +176,14 @@ def get_healthcheck() -> dict | None:
     missing_hashes = index_hashes.difference(storage_hashes)
     if missing_hashes:
         placeholders = ", ".join("?" for _ in missing_hashes)
-        with sqlite3.connect(DB_PATH) as con:
-            select_query = f"""
+        select_query = f"""
             SELECT
                 id,
                 name
             FROM "index"
             WHERE sha256 in ({placeholders})
-            """
+        """
+        with _open_transaction() as con:
             res = con.execute(select_query, tuple(missing_hashes)).fetchall()
     else:
         res = []
@@ -222,65 +198,9 @@ def get_healthcheck() -> dict | None:
     return None
 
 
-def set_user_config(key: str, value: str) -> None:
-    """
-    Exposed function to set the user config
-    Checks key validity
-    """
-    _set_config("user", key, value)
-    return
-
-
-def get_user_config() -> dict:
-    """Exposed function to get user config"""
-    return _get_config("user")
-
-
-# get/set config - gets and sets config
-
 # --------------------------------------
 # ------ Import related functions ------
 # --------------------------------------
-def _prepare_insert(
-        name: str,
-        hexdigest: str,
-        description: str,
-        date_created: date,
-        tags: Sequence[str],
-) -> sqlite3.Connection:
-    """
-    Helper function to insert the given data into index.
-    Does not commit the transaction, hence prepare_insert.
-    Raises FileExistsError if the insert is duplicate
-    """
-
-    DB_PATH = Path(_get_config("local")["db-path"])
-
-    con = sqlite3.connect(DB_PATH, autocommit=False)
-    con.execute("PRAGMA foreign_keys = ON")  # Turned off by default for backwards compatibility
-
-    insert_sql = """
-                 INSERT INTO "index" (sha256, name, description, date_created)
-                 VALUES (?, ?, ?, ?) \
-                 """
-    params = (hexdigest, name, description, date_created.isoformat())
-
-    try:
-        cursor = con.execute(insert_sql, params)
-        index_id = cursor.lastrowid
-        con.executemany(
-            """INSERT INTO tags (id, tag)
-               VALUES (?, ?)""",
-            [(index_id, tag) for tag in tags]
-        )
-    except Exception as err:
-        con.rollback()
-        con.close()
-        raise RuntimeError(f"Could not insert the given data: {type(err).__name__} - {err}") from err
-
-    return con
-
-
 def import_file(
         source: Path,
         description: str,
@@ -293,38 +213,40 @@ def import_file(
     Parameters are assumed true
     """
 
-    STORAGE_PATH = Path(_get_config("local")["storage-path"])
+    STORAGE_PATH = Path(get_config("local")["storage-path"])
 
     try:
         with open(source, mode="rb") as source_file:
             binary = source_file.read()
     except PermissionError as err:
         raise ImportError("Cannot read the given file: not enough permissions.") from err
-
     if not binary:
         raise ImportError("Cannot move empty files.")
 
     from hashlib import sha256
     hexdigest = sha256(binary).hexdigest()
 
+    insert_sql = """
+                 INSERT INTO "index" (sha256, name, description, date_created)
+                 VALUES (?, ?, ?, ?)
+                 """
+    params = (hexdigest, source.name, description, date_created.isoformat())
     try:
-        con = _prepare_insert(source.name, hexdigest, description, date_created, tags)
+        with _open_transaction() as con:
+            cursor = con.execute(insert_sql, params)
+            index_id = cursor.lastrowid
+            con.executemany(
+                """INSERT INTO tags (id, tag)
+                   VALUES (?, ?)""",
+                [(index_id, tag) for tag in tags]
+            )
+
+            with open(STORAGE_PATH / hexdigest, mode="wb") as target_file:
+                target_file.write(binary)
+            source.unlink()
     except Exception as err:
-        raise ImportError(f"Could not update the index: {type(err).__name__} - {err}") from err
-
-    with open(STORAGE_PATH / hexdigest, mode="wb") as target_file:
-        target_file.write(binary)
-
-    try:
-        source.unlink()
-    except PermissionError as err:
         Path(STORAGE_PATH / hexdigest).unlink()
-        con.rollback()
-        raise ImportError("Cannot move the given file: not enough permissions.") from err
-    else:
-        con.commit()
-    finally:
-        con.close()
+        raise ImportError(f"Could not update the index: {type(err).__name__} - {err}") from err
 
     return None
 
@@ -351,7 +273,7 @@ def fetch_file_set(
     None describes a non-existent condition. For example name=None means that the name is irrelevant in selection
     dry_run: If true, do not fetch any files, but return a tuple of potentially fetched ones.
     """
-    local_config = _get_config("local")
+    local_config = get_config("local")
     DB_PATH, STORAGE_PATH = Path(local_config["db-path"]), Path(local_config["storage-path"])
 
     ids = _get_feasible_file_set(id_, name, description_contains, date_created, date_added, tags)
@@ -375,7 +297,7 @@ def fetch_file_set(
         files_to_fetch = tuple(tuple(map(str, row)) for row in files_to_fetch)
         return files_to_fetch
 
-    config = _get_config("user")
+    config = get_config("user")
 
     # Empty dir regardless of the flag
     if not list(Path(config["landing-directory"]).iterdir()):
@@ -406,7 +328,7 @@ def get_overview() -> dict:
     Returns a dictionary of total number of files stored ("total-n-files": int),
     unique tags ("unique-tags": tuple), and the first and last date created ("min-max-dates": tuple with dates, or an empty tuple)
     """
-    DB_PATH = Path(_get_config("local")["db-path"])
+    DB_PATH = Path(get_config("local")["db-path"])
     with sqlite3.connect(DB_PATH) as con:
         ids = con.execute("""SELECT COUNT(distinct id)
                              FROM "index" """).fetchall()
@@ -431,27 +353,6 @@ def get_overview() -> dict:
 # --------------------------------------
 # ------- Drop related functions -------
 # --------------------------------------
-def _prepare_drop(id_: int) -> sqlite3.Connection:
-    """
-    Helper function to drop the given id from the table.
-    Does not commit the drop, hence the name.
-    Raises FileExistsError if the insert is duplicate
-    """
-    DB_PATH = Path(_get_config("local")["db-path"])
-    con = sqlite3.connect(DB_PATH, autocommit=False)
-    con.execute("PRAGMA foreign_keys = ON")  # Turned off by default for backwards compatibility
-    res = con.execute("""DELETE
-                         FROM "index"
-                         WHERE id = ?""", (id_,))
-
-    if res.rowcount == 0:
-        con.rollback()
-        con.close()
-        raise IndexError(f"Id does not exist: {id_}")
-
-    return con
-
-
 def _build_where_restrictions(
         id_: bool = False,
         name: bool = False,
@@ -519,7 +420,7 @@ def drop_file_set(
 
     dry_run: If true, do not drop any files, but return the number of potentially dropped files.
     """
-    config = _get_config("local")
+    config = get_config("local")
     DB_PATH, STORAGE_PATH = Path(config["db-path"]), Path(config["storage-path"])
 
     ids = _get_feasible_file_set(id_, name, description_contains, date_created, date_added, tags)
@@ -539,9 +440,10 @@ def drop_file_set(
         return len(files_to_drop)
 
     for (i, hash_) in files_to_drop:
-        con = _prepare_drop(i)
-        Path(STORAGE_PATH / hash_).unlink(missing_ok=True)
-        con.commit()
-        con.close()
+        with _open_transaction() as con:
+            con.execute("""DELETE
+                           FROM "index"
+                           WHERE id = ?""", (id_,))
+            Path(STORAGE_PATH / hash_).unlink(missing_ok=True)
 
     return None
