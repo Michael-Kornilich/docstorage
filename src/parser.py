@@ -130,7 +130,11 @@ def _add_filters(parser, *, include_dry_run=True):
                             help="do all the internal checks without actually executing the given command")
 
 
-arg_parser = _CLIArgumentParser(prog="docstorage", description="Local document storage")
+desc = """
+Local CLI document storage with Create, Read and Delete functionality.
+""".strip()
+
+arg_parser = _CLIArgumentParser(prog="docstorage", description=desc)
 commands = arg_parser.add_subparsers(dest="command", required=True)
 
 import_parser = commands.add_parser("import", help="ingest a file")

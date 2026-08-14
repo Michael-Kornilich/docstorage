@@ -65,14 +65,14 @@ def resolve_db() -> None:
                       """.strip()
 
     if not STORAGE_PATH.exists():
-        print("Storage path not found: creating a new one")
+        print("=> Storage path not found: creating a new one")
         STORAGE_PATH.mkdir(parents=True, exist_ok=True)
 
     if not DB_PATH.exists():
         # Won't handle the case where the index does not exist, but files do or the other way around
         # Since this is a very unlikely scenario
         # This code is assumed to be executed on the very first start of the app.
-        print("Index not found: creating a new one")
+        print("=> Index not found: creating a new one")
         try:
             DB_PATH.parent.mkdir(parents=True, exist_ok=True)
             DB_PATH.touch()

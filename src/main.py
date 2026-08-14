@@ -7,7 +7,7 @@ from src.db import (
     get_healthcheck,
     get_overview
 )
-from utility import get_config, set_config
+from src.utility import get_config, set_config
 from datetime import date
 from pathlib import Path
 

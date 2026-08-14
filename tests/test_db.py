@@ -17,7 +17,7 @@ from src.db import (
 )
 from src.utility import DateInterval, get_config, set_config
 
-
+# TODO: decide how, and ship the 0.1.0
 # Fixture Hierarchy
 # - setup_db_environment
 # - setup_files_to_move
@@ -185,7 +185,7 @@ class TestResolve:
         resolve_db()
 
     def test_fs_pointing_to_file(self, setup_file_db_environment):
-        resolve_db()
+        raise NotADirectoryError("Not yet written.")
 
 
 class TestImport:
@@ -509,6 +509,3 @@ class TestRandom:
         assert get_index_len() == len(records) - len(fetched)
         assert get_storage_len() == len(records) - len(fetched)
         assert get_healthcheck() is None
-
-    def test_random_bad(self, setup_db):
-        pass
