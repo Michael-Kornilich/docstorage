@@ -1,21 +1,21 @@
 ## This file defines project's context invariant best practices and workflows
 
-### Run
+## Workflows
 
-The `src/docstorage` is the entrypoint to the app. 
-Hence, run with `sh src/docstorage <args>`
+- **Run**: `cd` to the project root; the entrypoint is `src/docstorage`; run with `sh src/docstorage <args>`
+- **Test**: Run `poetry run python -m pytest .` from `docstorage/`
+- **Get / set config**: use `utility.get_config and utility.set_config`; specify which type to get/set - user config
+  (the users can change it) or the local config (it's set up at install-time)
 
-### Test
+## Best practices
 
-Run `poetry run python -m pytest .` from `docstorage/`
+### For function
 
-### Best practices
-
-**Function best practices:**
-
-- Where reasonable, ALWAYS type-annotate parameters.
-  Annotation is not required for functions whose parameters are
+- Where reasonable, ALWAYS type-annotate parameters. Annotation is not required for functions whose parameters are
   internally required boilerplate (for example, argparse.Action)
 - ALWAYS write a concise docstring
 
-**Overall best-practice:** keep is as simple as possible
+### Overall best-practice
+
+Keep is as simple as possible
+
