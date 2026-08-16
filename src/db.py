@@ -40,8 +40,9 @@ def resolve_db() -> None:
     Expected keys: 'db-path', 'storage-path'
     """
 
-    config = get_config("local")
-    DB_PATH, STORAGE_PATH = Path(config["db-path"]), Path(config["storage-path"])
+    local_config = get_config("local")
+    user_config = get_config("user")
+    DB_PATH, STORAGE_PATH = Path(local_config["db-path"]), Path(local_config["storage-path"])
 
     # id: SQLite's specific alias for rowid. The primary key is automatically generated
     create_index_sql = """
@@ -97,6 +98,14 @@ def resolve_db() -> None:
         with open(DB_PATH, mode="rb") as f:
             if len(f.read()) == 0:
                 raise RuntimeError(f"Corrupted index: no data available")
+
+    if not Path(user_config["landing-dir"]).exists():
+        print("=> Landing dir not found: creating a new one")
+        try:
+            Path(user_config["landing-dir"]).mkdir(parents=True)
+        except Exception as err:
+            raise RuntimeError("Cannot create the landing directory") from err
+
     return None
 
 
@@ -299,6 +308,9 @@ def fetch_file_set(
         return files_to_fetch
 
     config = get_config("user")
+    if not Path(config["landing-directory"]).exists():
+        print("=> Landing directory is missing, creating it.")
+        Path(config["landing-directory"]).mkdir(parents=True)
 
     # Empty dir regardless of the flag
     if not list(Path(config["landing-directory"]).iterdir()):
@@ -314,9 +326,13 @@ def fetch_file_set(
     for (_, hash_, name_, *_) in files_to_fetch:
         target_file = Path(config["landing-directory"]) / name_
         if target_file.exists():
-            new_name = "doc " + name_
+            nm, *sf = name_.split(".")
+            suffix = "".join(sf)
+            new_name = nm + " (1)." + suffix
+            i = 2
             while (Path(config["landing-directory"]) / new_name).exists():
-                new_name = "doc " + new_name
+                new_name = nm + f" ({i})." + suffix
+                i += 1
             shutil.copy2(STORAGE_PATH / hash_, Path(config["landing-directory"]) / new_name)
         else:
             shutil.copy2(STORAGE_PATH / hash_, target_file)

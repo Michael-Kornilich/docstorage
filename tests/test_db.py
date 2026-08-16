@@ -185,7 +185,7 @@ class TestResolve:
         resolve_db()
 
     def test_fs_pointing_to_file(self, setup_file_db_environment):
-        raise NotADirectoryError("Not yet written.")
+        raise NotImplementedError("Not yet written.")
 
 
 class TestImport:
@@ -338,7 +338,6 @@ class TestDelete:
 
 
 class TestFetch:
-    # TODO: test all 4 cases of fetching AND fetching into existing with the actual name not existing
     def test_normal_fetch(self, setup_populated_storage):
         out = fetch_file_set(id_=1, dry_run=False)
         assert out is None
@@ -371,17 +370,21 @@ class TestFetch:
     def test_exising_file_fetch(self, setup_populated_storage):
         fetch_file_set(name="normal-file-a.pdf", dry_run=False)
         fetch_file_set(name="normal-file-a.pdf", dry_run=False, keep_existing=True)
+        fetch_file_set(name="normal-file-a.pdf", dry_run=False, keep_existing=True)
         assert get_storage_len() == 3
         assert get_index_len() == 3
-        assert get_landing_dir_len() == 2
+        assert get_landing_dir_len() == 3
 
         for i in Path(setup_populated_storage / "landing").iterdir():
-            assert i.name in ("normal-file-a.pdf", "doc normal-file-a.pdf")
+            assert i.name in ("normal-file-a.pdf", "normal-file-a (1).pdf", "normal-file-a (2).pdf")
 
     def test_existing_but_no_key(self, setup_populated_storage):
         fetch_file_set(name="normal-file-a.pdf", dry_run=False)
         with pytest.raises(FileExistsError):
             fetch_file_set(name="normal-file-a.pdf", dry_run=False)
+
+    def test_no_landing_dir(self, setup_populated_storage):
+        raise NotImplementedError("Not yet written.")
 
 
 class TestHealthcheck:
