@@ -99,10 +99,10 @@ def resolve_db() -> None:
             if len(f.read()) == 0:
                 raise RuntimeError(f"Corrupted index: no data available")
 
-    if not Path(user_config["landing-dir"]).exists():
+    if not Path(user_config["landing-directory"]).exists():
         print("=> Landing dir not found: creating a new one")
         try:
-            Path(user_config["landing-dir"]).mkdir(parents=True)
+            Path(user_config["landing-directory"]).mkdir(parents=True)
         except Exception as err:
             raise RuntimeError("Cannot create the landing directory") from err
 
