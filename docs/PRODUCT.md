@@ -8,16 +8,14 @@ I need a small database for local document storage. It will include my personal 
 registrations, mail, etc. It has to have the following features:
 
 - Minimal, simple and light-weight because I don't want to manage servers or complex apps
-- Local. Cloud support may come later, but now the app is fully local. So a simple install in docker or as an agent tool
+- Local. Cloud support may come later, but now the app is fully local. So a simple installation in docker or as an agent tool
   will be enough
 - Heavy metadata indexed like document name, description, date created, date added, tags
 - The app should fully own (store) files to reduce complexity and increase robustness since paths are fragile
-- I want smooth ingestion. This will not be done with SQL because of awkward handling of file content, but rather
-  flag-based.
-- and smooth flag-based querying. The queries will result in files being served in a landing directory
-- Both ingestion and queries will be flag based because there are too many edge cases with SQL to safely handle (for
-  example prevent arbitrary SQL execution or retrieval of random columns w.o. file content)
-- I expect the databse to ingest files hashed and python manage the actual files. That is, move and serve (into a
+- I want smooth, flag-based ingestion and querying. This will not be done with SQL because of awkward handling of file
+  content and too many edge cases to safely handle (for example, arbitrary SQL execution or retrieval of random
+  columns without file content).
+- I expect the database to ingest files hashed and python manage the actual files. That is, move and serve (into a
   designated directory) upon calls. Pure filepaths won't cut it.
 - The original files will be deleted (effectively moved)
 - The database engine should be minimal and reliable.
@@ -59,13 +57,13 @@ management suite. It provides a dependable local foundation rather than a large 
 
 ## What will be developed
 
-**A CLI tool for local CR(U)D operations on files** will be developed It must ingest files (and delete the originals).
-This will be done as follows:
+**A CLI tool for local CR(U)D operations on files** will be developed. It must ingest files. This will be done as
+follows:
 
 - (begin DB commit) write file hash and metadata
 - Copy the target file into the internal storage
 - (Try to) delete the source file
-- If all successful => commit DB change The ingestion will be flag based.
+- If all successful ⇒ commit DB change The ingestion will be flag based.
 
 It must retrieve the files and create them in the landing directory. This will be done as follows:
 
@@ -73,7 +71,7 @@ It must retrieve the files and create them in the landing directory. This will b
 - Files copied from the internal storage into the landing area In case of name collision return filename, filename (1),
   filename (2) based on the date created
 
-The database will store hashes of files while python will manage the actual files The following columns will be created:
+The following columns will be created:
 
 - id
 - name
