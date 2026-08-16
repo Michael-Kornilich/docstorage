@@ -5,3 +5,4 @@ tests/volume/*
 **/*.ipynb
 temp/
 volume
+config/
