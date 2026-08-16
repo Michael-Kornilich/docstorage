@@ -1,4 +1,4 @@
-# CLI logic
+# CLI Reference
 
 **The file explains full CLI logic.**
 
@@ -21,7 +21,7 @@ Positional arguments:
 Flags:
 
 - --name | -n: file name
-- --id: accepts an integer. The validation is handled by the main. Optional: defaults to None
+- --id: accepts an integer. Optional: defaults to None
 - --description-contains: accepts a string (300 characters limit). Optional: defaults to None
 - --date-created | -dc: accepts a YYYY-MM-DD date OR a date range. Optional: defaults to None The date range should have
   the following form: {<|<=|>|>=|=}YYYY-MM-DD,{<|<=|>|>=|=}YYYY-MM-DD or {<|<=|>|>=|=}YYYY-MM-DD as a shortcut. The
@@ -48,8 +48,8 @@ command, then an identical delete command, such that the fetched files will be d
 
 Flags:
 
-- --all | -a: if there are multiple items that fit the criteria, all will delete all of them. Otherwise, error. If only 1
-  item the flag has no effect and the item is deleted anyway
+- --all | -a: if there are multiple items that fit the criteria, all will delete all of them. Otherwise, error. If only
+  1 item the flag has no effect and the item is deleted anyway
 
 **config**
 Positional arguments:

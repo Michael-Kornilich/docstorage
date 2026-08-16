@@ -1,54 +1,33 @@
 # Technical design
 
-This document lists the technical implementation of requirements listed in `PRODUCT.md`
+This document lists the technical implementation of requirements listed in `docs/PRODUCT.md`
 
 ## Architecture
 
-- sqlite for indexing
+- SQLite for indexing
 - python as code glue and file management
 - A .json files for configs (user and local)
+- poetry as a package manager
 
 Main objects:
 
-- CLI parser
-- Database handler
-- Orchestrator
+- CLI parser (`src/parser.py`)
+- Database handler (`src/db.py`)
+- Orchestrator (`src/main.py`)
+- Configs: There are 2 configs - the user config and local config. The former includes the user specified landing
+  directory. The latter internal paths to the database and storage. These are filled at install-time via the installer.
 
-### App usage
-
-There are 2 configs: the user config and local config. The former includes the user specified landing directory. The
-latter internal paths to the database and storage. These are filled at install-time via the installer.
+The default landing directory is `$HOME/docstorage`. It's recommended to specify the custom directory from the get-go.
 
 ## Development
 
-### Dev install
-
-1. Make sure to have poetry installed
-2. Clone the repo
-3. cd to the project root
-4. Run `poetry install --no-root && poetry run python scripts/dev-install.py`
-5. Consult `AGENTS.md` for common workflows
-
-### Local build
+### Tooling for the local build
 
 ...
 
-## Deployment
-
-### Tooling
+### Tooling for deployment
 
 ...
 
-### Pipeline
 
-...
-
-### Production install
-
-1. Make sure you have python (>=3.12) and pipx (>=1.4.0) installed
-2. Run `pipx install docstorage`
-3. Reopen terminal and set up the landing directory of your choice with
-   `docstorage config set landing-directory <your directory>`
-
-The default landing directory is `$HOME/docstorage`. It's recommended to specify the custom directory from the get-go.
 
