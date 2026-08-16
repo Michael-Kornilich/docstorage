@@ -23,9 +23,13 @@ latter internal paths to the database and storage. These are filled at install-t
 
 ### Dev install
 
-...
+1. Make sure to have poetry installed
+2. Clone the repo
+3. cd to the project root
+4. Run `poetry install --no-root && poetry run python scripts/dev-install.py`
+5. Consult `AGENTS.md` for common workflows
 
-### Develop
+### Local build
 
 ...
 

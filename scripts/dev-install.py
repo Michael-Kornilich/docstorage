@@ -14,7 +14,9 @@ dev_local_config = {
 }
 with open("config/local.json", "w") as f:
     json.dump(dev_local_config, f, indent=2)
+print("Set up the local config. Now the database related object reside in volume/")
 
 user_local_config = {"landing-directory": f"{os.environ['PWD']}/temp"}
 with open("config/user.json", "w") as f:
     json.dump(user_local_config, f, indent=1)
+print("Set up the user config. Now the landing directory is temp/")

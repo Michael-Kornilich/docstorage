@@ -4,6 +4,7 @@
 
 - **Run**: `cd` to the project root; the entrypoint is `src/docstorage`; run with `sh src/docstorage <args>`
 - **Test**: Run `clear && poetry run python -m pytest -q` from `docstorage/`
+
 - **Get / set config**: use `utility.get_config and utility.set_config`; specify which type to get/set - user config
   (the users can change it) or the local config (it's set up at install-time)
 
