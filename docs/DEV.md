@@ -1,4 +1,8 @@
-## This file defines project's context invariant best practices and workflows
+# Developer Workflows
+
+> This file defines project's context invariant best practices and workflows.
+
+---
 
 ## Workflows
 
@@ -41,7 +45,7 @@
 
 ### Overall best-practice
 
-Keep is as simple as possible.
+Keep it as simple as possible.
 
 ### For function
 

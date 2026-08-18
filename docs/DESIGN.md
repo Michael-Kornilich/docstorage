@@ -1,13 +1,14 @@
 # Technical design
 
-This document lists the technical implementation of requirements listed in `docs/PRODUCT.md`
+> This document lists the technical implementation of docstorage
+
+---
 
 ## Architecture
 
 - SQLite for indexing
 - python as code glue and file management
 - A .json files for configs (user and local)
-- poetry as a package manager
 
 Main objects:
 
@@ -19,7 +20,47 @@ Main objects:
 
 The default landing directory is `$HOME/docstorage`. It's recommended to specify the custom directory from the get-go.
 
+## App design
+
+The app ingests files as follows:
+
+- (begin DB commit) write file hash and metadata
+- Copy the target file into the internal storage
+- (Try to) delete the source file
+- If all successful ⇒ commit DB transaction
+
+The app copies files into the landing directory. In case of name collision return filename, filename (1), filename (2)
+based on which files were fetched first.
+
+Fail-safes:
+
+- In case a file cannot be moved or any error occurs upon copying or deleting, the program errors out and the DB
+  transaction is aborted
+- If the process crashes, the user can use a backup to restore the last state (not implemented yet)
+
+The following columns in the index were created:
+
+- id
+- name
+- description
+- date_created
+- date_added
+- sha256
+
+The primary key will be the ID, hence names can be duplicate
+
+There will also be a `tags` table with:
+
+- document id (foreign key)
+- tag
+
 ## Development
+
+### Tooling for development
+
+- poetry as a package manager
+- pytest for testing
+- A dev installer script to set up configs and volumes inside the project (`scripts/dev-install.py`)
 
 ### Tooling for the local build
 

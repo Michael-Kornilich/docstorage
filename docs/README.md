@@ -9,7 +9,7 @@ need them.
 
 You can find more on the product and the user story in `docs/PRODUCT.md`.
 
-### Installation guide
+## Installation guide
 
 1. Make sure you have python (>=3.12) and pipx (>=1.4.0) installed
 2. Run `pipx install docstorage`
@@ -18,7 +18,7 @@ You can find more on the product and the user story in `docs/PRODUCT.md`.
 
 The default landing directory is `$HOME/docstorage`. It's recommended to specify the custom directory from the get-go.
 
-### CLI Examples
+## CLI Examples
 
 Import a file:
 

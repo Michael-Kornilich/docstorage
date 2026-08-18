@@ -17,6 +17,7 @@ from src.db import (
 )
 from src.utility import DateInterval, get_config, set_config
 
+
 # TODO: decide how, and ship the 0.1.0
 # Fixture Hierarchy
 # - setup_db_environment
@@ -184,8 +185,10 @@ class TestResolve:
     def test_incomplete_internal_fs(self, setup_incomplete_db_environment):
         resolve_db()
 
-    def test_fs_pointing_to_file(self, setup_file_db_environment):
-        raise NotImplementedError("Not yet written.")
+    def test_fs_pointing_to_file(self, setup_db_environment):
+        (setup_db_environment / "landing").rmdir()
+        resolve_db()
+        assert (setup_db_environment / "landing").exists()
 
 
 class TestImport:
