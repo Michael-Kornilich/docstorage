@@ -68,12 +68,5 @@ There will also be a `tags` table with:
 
 ### Peripheral architecture
 
-Both config and persistent storage land in their respective directory.
-The exact directories are resolved by `platformdirs`
-
-### Tooling for deployment
-
-...
-
-
-
+Both config and persistent storage land in their respective directory. The exact directories are resolved by
+`platformdirs`
