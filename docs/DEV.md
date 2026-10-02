@@ -14,7 +14,7 @@
 4. Run
 
 ```bash
-   poetry install --no-root && \
+   poetry install && \
    poetry run python scripts/dev-install.py
 ```
 

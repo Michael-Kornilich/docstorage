@@ -56,15 +56,20 @@ There will also be a `tags` table with:
 
 ## Development
 
-### Tooling for development
-
-- poetry as a package manager
 - pytest for testing
 - A dev installer script to set up configs and volumes inside the project (`scripts/dev-install.py`)
 
-### Tooling for the local build
+## Deployment
 
-...
+### Tooling
+
+- poetry as a package builder
+- pipx as a (thin) environment manager
+
+### Peripheral architecture
+
+Both config and persistent storage land in their respective directory.
+The exact directories are resolved by `platformdirs`
 
 ### Tooling for deployment
 

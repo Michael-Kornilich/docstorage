@@ -172,8 +172,7 @@ class TestResolve:
 
         assert {name for (name,) in tables} == {"index", "tags"}
 
-    def test_valid_existing_db(self, setup_db_environment):
-        resolve_db()
+    def test_valid_existing_db(self, setup_populated_storage):
         resolve_db()
 
     def test_empty_existing_db(self, setup_db_environment):

@@ -1,3 +1,4 @@
+"""Create auxiliary directories and configs to run the project"""
 import json
 import os
 from pathlib import Path
