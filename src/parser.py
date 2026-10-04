@@ -2,6 +2,7 @@ from src.utility import DateInterval
 from datetime import date
 import argparse
 import re
+import os
 
 
 class UniqueCSV(argparse.Action):
@@ -130,9 +131,15 @@ def _add_filters(parser, *, include_dry_run=True):
                             help="do all the internal checks without actually executing the given command")
 
 
-desc = """
-Local CLI document storage with Create, Read and Delete functionality.
-""".strip()
+if os.environ.get("DOCSTORAGE_ENV", "") in ("dev", "test"):
+    desc = """
+    Local CLI document storage with Create, Read and Delete functionality.
+    ENVIRONMENT: NON-PRODUCTION
+    """.strip()
+else:
+    desc = """
+    Local CLI document storage with Create, Read and Delete functionality.
+    """.strip()
 
 arg_parser = _CLIArgumentParser(prog="docstorage", description=desc)
 commands = arg_parser.add_subparsers(dest="command", required=True)

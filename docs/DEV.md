@@ -14,8 +14,7 @@
 4. Run
 
 ```bash
-   poetry install && \
-   export DOCSTORAGE_EVN="dev"
+   poetry install &&
 ```
 
 ### Local build
@@ -28,7 +27,9 @@
 
 ### Local development
 
-- **Run**: `cd` to the project root; the entrypoint is `src/docstorage`; run with `sh src/docstorage <args>`
+- **Run code**: `cd` to the project root; Run with `DOCSTORAGE_EVN="dev" poetry run python -m src.<file> <arguments>`
+- **Run the whole app**: `cd` to the project root; the entrypoint is `src/docstorage`; run with
+  `DOCSTORAGE_EVN="dev" sh src/docstorage <args>`
 - **Test**: Run `DOCSTORAGE_EVN="test" poetry run python -m pytest` from `docstorage/`
 
 ### Production install
