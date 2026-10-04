@@ -1,4 +1,4 @@
-"""Defines configuration logic"""
+"""Defines the configuration object and its logic"""
 import json
 from pathlib import Path
 import os
@@ -18,7 +18,7 @@ class Config:
             config_path = Path(os.getcwd()) / "config"
         elif os.environ.get("DOCSTORAGE_ENV") == "test":
             self.env = "test"
-            self._configpath = Path(os.environ["TEST_CONFIG_PATH"]) / "./config/config.json"
+            self._configpath = Path(os.environ["TEST_CONFIG_PATH"])
             return
         else:
             self.env = "prod"
@@ -44,13 +44,21 @@ class Config:
         with open(self._configpath, "r") as f:
             config = json.load(f)
         if key not in config:
-            raise KeyError(f"The {key} is invalid.")
+            raise KeyError(f"The {key} is invalid. Available keys are: {list(config.keys())}")
         return config[key]
 
     def __setitem__(self, key: str, value: str) -> None:
-        with open(self._configpath, "w") as f:
+        with open(self._configpath, "r") as f:
             config = json.load(f)
         if key not in config:
-            raise KeyError(f"The {key} is invalid.")
+            raise KeyError(f"The {key} is invalid. Available keys are: {list(config.keys())}")
         config[key] = value
+        with open(self._configpath, "w") as f:
+            json.dump(config, f, indent=2)
         return None
+
+    def items(self):
+        with open(self._configpath, "r") as f:
+            config = json.load(f)
+        for i in config.items():
+            yield i

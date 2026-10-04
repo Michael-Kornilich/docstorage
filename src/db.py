@@ -2,7 +2,7 @@
 import sqlite3
 import shutil
 from src.utility import DateInterval
-from config import Config
+from src.config import Config
 from pathlib import Path
 from datetime import date
 from typing import Sequence

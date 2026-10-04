@@ -7,7 +7,7 @@ from src.db import (
     get_healthcheck,
     get_overview
 )
-from src.utility import get_config, set_config
+from src.config import Config
 from datetime import date
 from pathlib import Path
 
@@ -167,9 +167,10 @@ match arg_namespace.command:
             print(f"Max date created: {res['min-max-dates'][1]}")
     case "config":
         if arg_namespace.config_command == "set":
-            set_config("user", arg_namespace.field, arg_namespace.value)
+            config = Config()
+            config[arg_namespace.field] = arg_namespace.value
             print("Configuration updated successfully!")
         elif arg_namespace.config_command == "list":
-            config = get_config("user")
+            config = Config()
             for k, v in config.items():
                 print(f"{k}: {v}")
