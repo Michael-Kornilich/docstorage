@@ -3,7 +3,7 @@ name = "docstorage"
 version = "0.0.1"
 description = "A local, fully-managed file storage CLI app"
 authors = [
-    {name = "Michael Kornilich",email = "molego16@gmail.com"}
+    { name = "Michael Kornilich", email = "molego16@gmail.com" }
 ]
 readme = "README.md"
 requires-python = ">=3.12"
@@ -12,17 +12,19 @@ dependencies = [
     "platformdirs (>=4.12.2,<5.0.0)"
 ]
 
-[project.scripts]
-docstorage = "docstorage.src:main"
-
-[build-system]
-requires = ["poetry-core>=2.0.0,<3.0.0"]
-build-backend = "poetry.core.masonry.api"
-
 [dependency-groups]
 dev = [
     "pytest (>=9.1.1,<10.0.0)",
 ]
 
+[project.scripts]
+docstorage = "docstorage.main:main"
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"
+
 [tool.poetry]
-package-mode = false
+packages = [
+    { include = "docstorage", from = "src" }
+]

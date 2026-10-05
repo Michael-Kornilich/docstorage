@@ -14,7 +14,7 @@
 4. Run
 
 ```bash
-   poetry install --with dev
+   poetry install --no-root --with dev 
 ```
 
 ### Deploy
