@@ -1,7 +1,8 @@
-from src.utility import DateInterval
+from docstorage.utility import DateInterval
 from datetime import date
 import argparse
 import re
+import os
 
 
 class UniqueCSV(argparse.Action):
@@ -113,7 +114,7 @@ def _add_filters(parser, *, include_dry_run=True):
     name_group = parser.add_mutually_exclusive_group()
     name_group.add_argument("name_positional", nargs="?", metavar="name", help="file name")
     name_group.add_argument("--name", "-n", dest="name_option", help="file name")
-    parser.add_argument("--id", type=int, default=None, help="file id. Use docstorage overview to learn them")
+    parser.add_argument("--id", type=int, default=None, help="file id. Use launch.sh overview to learn them")
     parser.add_argument("--description-contains", type=_limited_text, default=None, metavar="TEXT",
                         help="string that the description must contain")
     parser.add_argument("--date-created", "-dc", action=ParseDateRange, default=None, metavar="DATE | DATE RANGE",
@@ -130,9 +131,15 @@ def _add_filters(parser, *, include_dry_run=True):
                             help="do all the internal checks without actually executing the given command")
 
 
-desc = """
-Local CLI document storage with Create, Read and Delete functionality.
-""".strip()
+if os.environ.get("DOCSTORAGE_ENV", "") in ("dev", "test"):
+    desc = """
+    Local CLI document storage with Create, Read and Delete functionality.
+    ENVIRONMENT: NON-PRODUCTION
+    """.strip()
+else:
+    desc = """
+    Local CLI document storage with Create, Read and Delete functionality.
+    """.strip()
 
 arg_parser = _CLIArgumentParser(prog="docstorage", description=desc)
 commands = arg_parser.add_subparsers(dest="command", required=True)

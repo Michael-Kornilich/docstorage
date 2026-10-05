@@ -1,3 +1,0 @@
-#!/bin/sh
-export PROJECT_ROOT="/Users/Misha/Documents/Dev/projects/docstorage/"
-poetry run python -m src.main "$@"

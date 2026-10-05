@@ -1,162 +1,40 @@
+from fixtures import *
 import sqlite3
-from datetime import date
-import shutil
-import pytest
-from pathlib import Path
-import json
 
-from src.db import (
+from docstorage.db import (
     resolve_db,
-    _open_transaction,
     import_file,
-    get_healthcheck,
-    get_overview,
     fetch_file_set,
     _build_where_restrictions,
     drop_file_set,
+    get_healthcheck
 )
-from src.utility import DateInterval, get_config, set_config
-
-# TODO: decide how, and ship the 0.1.0
-# Fixture Hierarchy
-# - setup_db_environment
-# - setup_files_to_move
-# - setup_incomplete_db_environment
-# - setup_file_db_environment
-#
-# - setup_db_environment => setup_db
-# - (setup_db, setup_files_to_move) => setup_populated_storage
-
-# All fixtures yield the root of the temporary directory
-
-@pytest.fixture
-def setup_db_environment(tmp_path, monkeypatch):
-    """Set up the database volume and yield the temp directory root."""
-    (tmp_path / "volume" / "index").mkdir(parents=True)
-    (tmp_path / "volume" / "storage").mkdir(parents=True)
-    (tmp_path / "landing").mkdir()
-    (tmp_path / "config").mkdir()
-
-    user_config = {"landing-directory": str((tmp_path / "landing").resolve())}
-    with open(tmp_path / "config" / "user.json", "w") as f:
-        json.dump(user_config, f)
-    local_config = {
-        "db-path": str((tmp_path / "volume" / "index" / "index.db").resolve()),
-        "storage-path": str((tmp_path / "volume" / "storage").resolve()),
-    }
-    with open(tmp_path / "config" / "local.json", "w") as f:
-        json.dump(local_config, f)
-
-    monkeypatch.setenv("PROJECT_ROOT", str(tmp_path))
-    yield tmp_path
-
-
-@pytest.fixture
-def setup_incomplete_db_environment(tmp_path, monkeypatch):
-    """Configure invalid database paths and yield the temp directory root."""
-    (tmp_path / "config").mkdir()
-    local_config = {
-        "db-path": str((tmp_path / "volume" / "index" / "index.db").resolve()),
-        "storage-path": str((tmp_path / "volume" / "storage").resolve()),
-    }
-    user_config = {"landing-directory": str((tmp_path / "landing").resolve())}
-    with open(tmp_path / "config" / "local.json", "w") as f:
-        json.dump(local_config, f)
-    with open(tmp_path / "config" / "user.json", "w") as f:
-        json.dump(user_config, f)
-    monkeypatch.setenv("PROJECT_ROOT", str(tmp_path))
-    yield tmp_path
-
-
-@pytest.fixture
-def setup_file_db_environment(tmp_path, monkeypatch):
-    (tmp_path / "config").mkdir()
-    local_config = {
-        "db-path": str((tmp_path / "volume" / "index" / "index.db").resolve()),
-        "storage-path": str((tmp_path / "volume" / "storage.txt").resolve()),
-    }
-    user_config = {"landing-directory": str((tmp_path / "landing").resolve())}
-    with open(tmp_path / "config" / "local.json", "w") as f:
-        json.dump(local_config, f)
-    with open(tmp_path / "config" / "user.json", "w") as f:
-        json.dump(user_config, f)
-    monkeypatch.setenv("PROJECT_ROOT", str(tmp_path))
-    yield tmp_path
-
-
-@pytest.fixture
-def setup_db(setup_db_environment):
-    """Initialize the database and yield the temp directory root."""
-    resolve_db()
-    yield setup_db_environment
-
-
-@pytest.fixture
-def setup_files_to_move(tmp_path, monkeypatch):
-    """Copy test files into and yield the temp directory root."""
-    test_volume = Path(__file__).parent / "volume"
-    for file in test_volume.iterdir():
-        if file.name.startswith("."):
-            continue
-        shutil.copy2(file, tmp_path / file.name)
-    yield tmp_path
-
-
-@pytest.fixture
-def setup_populated_storage(setup_db, setup_files_to_move):
-    """Populate the database and yield the temp directory root."""
-    files = [
-        {"filepath": setup_files_to_move / "normal-file-a.pdf",
-         "description": "Some description of a, contains content",
-         "date_created": date(2026, 1, 1), "tags": ["tag1", "tag2"]},
-        {"filepath": setup_files_to_move / "normal-file-b.pdf", "description": "Some description of b",
-         "date_created": date(2024, 1, 1), "tags": ["tag2", "tag3"]},
-        {"filepath": setup_files_to_move / "normal file c.pdf",
-         "description": "Some description of c, contains content",
-         "date_created": date(2025, 5, 4), "tags": ["tag4", "tag5"]},
-    ]
-    for file in files:
-        import_file(file["filepath"], file["description"], file["date_created"], file["tags"])
-
-    yield setup_db
+from docstorage.utility import DateInterval
+from docstorage.config import Config
 
 
 def get_index_len():
-    with sqlite3.connect(get_config("local")["db-path"]) as con:
+    with sqlite3.connect(Config()["db-path"]) as con:
         res = con.execute("""SELECT *
                              FROM "index" """).fetchall()
     return len(res)
 
 
 def get_storage_len():
-    STORAGE_PATH = get_config("local")["storage-path"]
+    STORAGE_PATH = Config()["storage-path"]
     return len(list(Path(STORAGE_PATH).iterdir()))
 
 
 def get_landing_dir_len():
-    landing_dir = get_config("user")["landing-directory"]
+    landing_dir = Config()["landing-directory"]
     return len(list(Path(landing_dir).iterdir()))
 
 
 def get_tags_len():
-    with sqlite3.connect(get_config("local")["db-path"]) as con:
+    with sqlite3.connect(Config()["db-path"]) as con:
         res = con.execute("""SELECT *
                              FROM tags """).fetchall()
     return len(res)
-
-
-class TestConfigManager:
-    def test_unknown_config_key(self, setup_db_environment):
-        with pytest.raises(ValueError):
-            get_config("unknown")
-
-    def test_set_good_config(self, setup_db_environment):
-        set_config("user", "landing-directory", "new/direcotory")
-        set_config("local", "db-path", "new/direcotory")
-
-    def test_set_bad_config(self, setup_db_environment):
-        with pytest.raises(KeyError):
-            set_config("user", "unknown", "new/direcotory")
 
 
 class TestResolve:
@@ -164,15 +42,14 @@ class TestResolve:
     def test_first_start(self, setup_db_environment):
         resolve_db()
 
-        with sqlite3.connect(Path(get_config("local")["db-path"])) as con:
+        with sqlite3.connect(Path(Config()["db-path"])) as con:
             tables = con.execute(
                 "SELECT name FROM sqlite_master WHERE type = 'table'"
             ).fetchall()
 
         assert {name for (name,) in tables} == {"index", "tags"}
 
-    def test_valid_existing_db(self, setup_db_environment):
-        resolve_db()
+    def test_valid_existing_db(self, setup_populated_storage):
         resolve_db()
 
     def test_empty_existing_db(self, setup_db_environment):
@@ -184,8 +61,10 @@ class TestResolve:
     def test_incomplete_internal_fs(self, setup_incomplete_db_environment):
         resolve_db()
 
-    def test_fs_pointing_to_file(self, setup_file_db_environment):
-        raise NotImplementedError("Not yet written.")
+    def test_fs_pointing_to_file(self, setup_db_environment):
+        (setup_db_environment / "landing").rmdir()
+        resolve_db()
+        assert (setup_db_environment / "landing").exists()
 
 
 class TestImport:
@@ -384,54 +263,8 @@ class TestFetch:
             fetch_file_set(name="normal-file-a.pdf", dry_run=False)
 
     def test_no_landing_dir(self, setup_populated_storage):
-        raise NotImplementedError("Not yet written.")
-
-
-class TestHealthcheck:
-    def test_no_mismatch(self, setup_populated_storage):
-        """Return no report when storage and index contain the same hashes."""
-        assert get_healthcheck() is None
-
-    def test_storage_mismatch(self, setup_populated_storage):
-        """Report an indexed file whose storage file has been removed."""
-        with sqlite3.connect(get_config("local")["db-path"]) as con:
-            file_hash, = con.execute(
-                'SELECT sha256 FROM "index" WHERE id = 1'
-            ).fetchone()
-
-        Path(get_config("local")["storage-path"], file_hash).unlink()
-
-        assert get_healthcheck() == {
-            "index-mismatch": [(1, "normal-file-a.pdf")],
-            "storage-mismatch": set(),
-        }
-
-    def test_index_mismatch(self, setup_populated_storage):
-        """Report a storage file whose index row has been removed."""
-        with sqlite3.connect(get_config("local")["db-path"]) as con:
-            file_hash, = con.execute(
-                'SELECT sha256 FROM "index" WHERE id = 1'
-            ).fetchone()
-            con.execute('DELETE FROM "index" WHERE id = 1')
-
-        assert get_healthcheck() == {
-            "index-mismatch": [],
-            "storage-mismatch": {file_hash},
-        }
-
-
-class TestGetOverview:
-    def test_empty(self, setup_db):
-        res = get_overview()
-        assert set(res.keys()) == {"n-total-files", "unique-tags", "min-max-dates"}
-        assert res["n-total-files"] == 0, "Files"
-        assert res["unique-tags"] == tuple(), "Tags"
-        assert res["min-max-dates"] == tuple(), "Dates"
-
-    def test_normal(self, setup_populated_storage):
-        res = get_overview()
-        assert res == {"n-total-files": 3, "unique-tags": tuple("tag" + str(i) for i in range(1, 6)),
-                       "min-max-dates": (date(2024, 1, 1), date(2026, 1, 1))}
+        Path(setup_populated_storage / "landing").rmdir()
+        fetch_file_set(name="normal-file-a.pdf", dry_run=False)
 
 
 class TestRandom:

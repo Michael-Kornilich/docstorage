@@ -1,7 +1,12 @@
 .*
-*.db
+*.sqlite
+*.ipynb
 __pycache__
 tests/volume/*
-**/*.ipynb
 temp/
 volume
+config/*
+dist
+
+!.gitignore
+!.github

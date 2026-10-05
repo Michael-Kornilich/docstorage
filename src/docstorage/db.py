@@ -1,7 +1,8 @@
 """Database- and storage-related functions"""
 import sqlite3
 import shutil
-from src.utility import DateInterval, get_config
+from docstorage.utility import DateInterval
+from docstorage.config import Config
 from pathlib import Path
 from datetime import date
 from typing import Sequence
@@ -11,7 +12,7 @@ from contextlib import contextmanager
 @contextmanager
 def _open_transaction() -> sqlite3.Connection:
     """Yield an open SQLite transaction with PRAGMA foreign_keys = ON"""
-    DB_PATH = get_config("local")["db-path"]
+    DB_PATH = Config()["db-path"]
     con = sqlite3.connect(DB_PATH)
     con.execute("PRAGMA foreign_keys = ON")
     con.execute("BEGIN")
@@ -39,10 +40,9 @@ def resolve_db() -> None:
 
     Expected keys: 'db-path', 'storage-path'
     """
+    config = Config()
 
-    local_config = get_config("local")
-    user_config = get_config("user")
-    DB_PATH, STORAGE_PATH = Path(local_config["db-path"]), Path(local_config["storage-path"])
+    DB_PATH, STORAGE_PATH = Path(config["db-path"]), Path(config["storage-path"])
 
     # id: SQLite's specific alias for rowid. The primary key is automatically generated
     create_index_sql = """
@@ -99,10 +99,10 @@ def resolve_db() -> None:
             if len(f.read()) == 0:
                 raise RuntimeError(f"Corrupted index: no data available")
 
-    if not Path(user_config["landing-dir"]).exists():
+    if not Path(config["landing-directory"]).exists():
         print("=> Landing dir not found: creating a new one")
         try:
-            Path(user_config["landing-dir"]).mkdir(parents=True)
+            Path(config["landing-directory"]).mkdir(parents=True)
         except Exception as err:
             raise RuntimeError("Cannot create the landing directory") from err
 
@@ -123,7 +123,7 @@ def _get_feasible_file_set(
     Helper function to return a set of file ids that fulfill given restrictions.
     Returns a list of ids
     """
-    config = get_config("local")
+    config = Config()
     DB_PATH, STORAGE_PATH = Path(config["db-path"]), Path(config["storage-path"])
 
     where_restrictions = _build_where_restrictions(bool(id_), bool(name), bool(description_contains),
@@ -171,7 +171,7 @@ def get_healthcheck() -> dict | None:
 
     'storage-mismatch': [hashes] values that are in the storage, but are missing from the index
     """
-    config = get_config("local")
+    config = Config()
     _, STORAGE_PATH = Path(config["db-path"]), Path(config["storage-path"])
     with _open_transaction() as con:
         select_query = f"""
@@ -223,7 +223,7 @@ def import_file(
     Parameters are assumed true
     """
 
-    STORAGE_PATH = Path(get_config("local")["storage-path"])
+    STORAGE_PATH = Path(Config()["storage-path"])
 
     try:
         with open(source, mode="rb") as source_file:
@@ -283,8 +283,8 @@ def fetch_file_set(
     None describes a non-existent condition. For example name=None means that the name is irrelevant in selection
     dry_run: If true, do not fetch any files, but return a tuple of potentially fetched ones.
     """
-    local_config = get_config("local")
-    DB_PATH, STORAGE_PATH = Path(local_config["db-path"]), Path(local_config["storage-path"])
+    config = Config()
+    DB_PATH, STORAGE_PATH = Path(config["db-path"]), Path(config["storage-path"])
 
     ids = _get_feasible_file_set(id_, name, description_contains, date_created, date_added, tags)
     ids = [str(i) for i in ids]
@@ -307,7 +307,6 @@ def fetch_file_set(
         files_to_fetch = tuple(tuple(map(str, row)) for row in files_to_fetch)
         return files_to_fetch
 
-    config = get_config("user")
     if not Path(config["landing-directory"]).exists():
         print("=> Landing directory is missing, creating it.")
         Path(config["landing-directory"]).mkdir(parents=True)
@@ -345,7 +344,7 @@ def get_overview() -> dict:
     Returns a dictionary of total number of files stored ("total-n-files": int),
     unique tags ("unique-tags": tuple), and the first and last date created ("min-max-dates": tuple with dates, or an empty tuple)
     """
-    DB_PATH = Path(get_config("local")["db-path"])
+    DB_PATH = Path(Config()["db-path"])
     with sqlite3.connect(DB_PATH) as con:
         ids = con.execute("""SELECT COUNT(distinct id)
                              FROM "index" """).fetchall()
@@ -437,7 +436,7 @@ def drop_file_set(
 
     dry_run: If true, do not drop any files, but return the number of potentially dropped files.
     """
-    config = get_config("local")
+    config = Config()
     DB_PATH, STORAGE_PATH = Path(config["db-path"]), Path(config["storage-path"])
 
     ids = _get_feasible_file_set(id_, name, description_contains, date_created, date_added, tags)
