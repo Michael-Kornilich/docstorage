@@ -64,7 +64,22 @@ There will also be a `tags` table with:
 ### Tooling
 
 - poetry as a package builder
-- pipx as a (thin) environment manager
+- pipx as an environment manager. So a wheel is installed with pipx
+- GH action as release glue
+
+### Release workflow
+
+- Push to main
+- Choose the type of release
+- Trigger the `ship-release.yaml` workflow
+
+`ship-release.yaml` workflow automatically does the following:
+- Tests the app (all tests must succeed)
+- Bumps the version according to the chosen release
+- Builds wheels with poetry
+- Makes sure the given version is actually bigger than the latest release
+- Tags the latest commit (the one being built) with `release-X.YY.ZZZ`
+- Pushes the wheels to PyPi
 
 ### Peripheral architecture
 

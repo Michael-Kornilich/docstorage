@@ -114,7 +114,7 @@ def _add_filters(parser, *, include_dry_run=True):
     name_group = parser.add_mutually_exclusive_group()
     name_group.add_argument("name_positional", nargs="?", metavar="name", help="file name")
     name_group.add_argument("--name", "-n", dest="name_option", help="file name")
-    parser.add_argument("--id", type=int, default=None, help="file id. Use docstorage overview to learn them")
+    parser.add_argument("--id", type=int, default=None, help="file id. Use launch.sh overview to learn them")
     parser.add_argument("--description-contains", type=_limited_text, default=None, metavar="TEXT",
                         help="string that the description must contain")
     parser.add_argument("--date-created", "-dc", action=ParseDateRange, default=None, metavar="DATE | DATE RANGE",
@@ -141,7 +141,7 @@ else:
     Local CLI document storage with Create, Read and Delete functionality.
     """.strip()
 
-arg_parser = _CLIArgumentParser(prog="docstorage", description=desc)
+arg_parser = _CLIArgumentParser(prog="launch.sh", description=desc)
 commands = arg_parser.add_subparsers(dest="command", required=True)
 
 import_parser = commands.add_parser("import", help="ingest a file")

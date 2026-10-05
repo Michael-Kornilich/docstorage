@@ -2,7 +2,10 @@
 *.db
 __pycache__
 tests/volume/*
-**/*.ipynb
+*.ipynb
 temp/
 volume
 config/*
+
+!.gitignore
+!.github

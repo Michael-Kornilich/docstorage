@@ -4,8 +4,6 @@
 
 ---
 
-`docstorage` is organized around a small set of commands for importing, finding, inspecting, and deleting documents.
-
 ```text
 docstorage <command> [options] [arguments]
 ```
@@ -28,7 +26,7 @@ Run `docstorage <command> --help` for the command's built-in help.
 Add a file to the library. The source path is required.
 
 ```bash
-docstorage import [options] <source>
+launch.sh import [options] <source>
 ```
 
 Options:
@@ -41,7 +39,7 @@ Options:
 Example:
 
 ```bash
-docstorage import \
+launch.sh import \
   --description "Bank statement" \
   --date-created 2025-01-05 \
   --tags bank,finance \
@@ -54,7 +52,7 @@ Copy documents matching the supplied filters to the configured landing directory
 matched.
 
 ```bash
-docstorage fetch [options] [name]
+launch.sh fetch [options] [name]
 ```
 
 The file name can be supplied either as the positional `name` argument or with `--name` / `-n`, but not both.
@@ -75,9 +73,9 @@ The file name can be supplied either as the positional `name` argument or with `
 Examples:
 
 ```bash
-docstorage fetch --tags finance --date-created ">=2025-01-01"
-docstorage fetch --name "certificate.pdf"
-docstorage fetch --tags finance --dry-run
+launch.sh fetch --tags finance --date-created ">=2025-01-01"
+launch.sh fetch --name "certificate.pdf"
+launch.sh fetch --tags finance --dry-run
 ```
 
 ## `delete`
@@ -85,7 +83,7 @@ docstorage fetch --tags finance --dry-run
 Delete documents matching the same filters as [`fetch`](#fetch).
 
 ```bash
-docstorage delete [options] [name]
+launch.sh delete [options] [name]
 ```
 
 It is an error to delete multiple matching documents unless `--all` is provided. The `--all` option is unnecessary when
@@ -99,9 +97,9 @@ Additional options:
 Examples:
 
 ```bash
-docstorage delete --name "old-statement.pdf"
-docstorage delete --tags obsolete --all
-docstorage delete --date-created "<2020-01-01" --dry-run
+launch.sh delete --name "old-statement.pdf"
+launch.sh delete --tags obsolete --all
+launch.sh delete --date-created "<2020-01-01" --dry-run
 ```
 
 ## Date filters
@@ -110,14 +108,14 @@ docstorage delete --date-created "<2020-01-01" --dry-run
 
 ```bash
 # On an exact date
-docstorage fetch --date-created 2025-01-05
+launch.sh fetch --date-created 2025-01-05
 
 # On or after / before a date
-docstorage fetch --date-created ">=2025-01-01"
-docstorage fetch --date-added "<2025-06-01"
+launch.sh fetch --date-created ">=2025-01-01"
+launch.sh fetch --date-added "<2025-06-01"
 
 # Between two dates, with independently chosen boundaries
-docstorage fetch --date-created ">=2025-01-01,<=2025-03-31"
+launch.sh fetch --date-created ">=2025-01-01,<=2025-03-31"
 ```
 
 Supported operators are `<`, `<=`, `>`, `>=`, and `=`. A range has the form
@@ -129,7 +127,7 @@ is a shortcut for an open-ended range.
 Show the total number of documents, the tags in use, and the minimum and maximum creation dates.
 
 ```bash
-docstorage overview
+launch.sh overview
 ```
 
 This command does not accept options or arguments.
@@ -139,7 +137,7 @@ This command does not accept options or arguments.
 Check whether the database index and stored files are in sync. Any mismatches are listed in the output.
 
 ```bash
-docstorage healthcheck
+launch.sh healthcheck
 ```
 
 This command does not accept options or arguments.
@@ -149,12 +147,12 @@ This command does not accept options or arguments.
 View or update the user configuration.
 
 ```bash
-docstorage config list
-docstorage config set <field> <value>
+launch.sh config list
+launch.sh config set <field> <value>
 ```
 
 `list` displays the current configuration. `set` updates a configuration field, such as the landing directory:
 
 ```bash
-docstorage config set landing-directory "/path/to/landing-directory"
+launch.sh config set landing-directory "/path/to/landing-directory"
 ```
