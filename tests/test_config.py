@@ -1,6 +1,6 @@
+from fixtures import *
 import pytest
-from src.config import Config
-from fixtures import setup_db_environment
+from docstorage.config import Config
 
 
 def test_unknown_config_key(setup_db_environment):

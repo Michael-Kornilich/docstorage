@@ -1,8 +1,14 @@
+import sys
+from pathlib import Path
+
+sys.path.append(
+    str((Path(__file__).parent.parent / "src").resolve())
+)
+
 import pytest
 import json
 import shutil
-from pathlib import Path
-from src.db import resolve_db, import_file
+from docstorage.db import resolve_db, import_file
 from datetime import date
 
 

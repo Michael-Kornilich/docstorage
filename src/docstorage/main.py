@@ -1,7 +1,7 @@
 def main():
     """The exposed function to pipx"""
-    from src.parser import arg_parser
-    from src.db import (
+    from docstorage.parser import arg_parser
+    from docstorage.db import (
         resolve_db,
         import_file,
         fetch_file_set,
@@ -9,7 +9,7 @@ def main():
         get_healthcheck,
         get_overview
     )
-    from src.config import Config
+    from docstorage.config import Config
     from datetime import date
     from pathlib import Path
 

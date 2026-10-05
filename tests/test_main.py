@@ -1,7 +1,7 @@
 # Test missing file and if passed a directory
 from fixtures import *
-from src.db import get_healthcheck, get_overview
-from src.config import Config
+from docstorage.db import get_healthcheck, get_overview
+from docstorage.config import Config
 import sqlite3
 
 

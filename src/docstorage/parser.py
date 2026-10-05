@@ -1,4 +1,4 @@
-from src.utility import DateInterval
+from docstorage.utility import DateInterval
 from datetime import date
 import argparse
 import re

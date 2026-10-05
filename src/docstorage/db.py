@@ -1,8 +1,8 @@
 """Database- and storage-related functions"""
 import sqlite3
 import shutil
-from src.utility import DateInterval
-from src.config import Config
+from docstorage.utility import DateInterval
+from docstorage.config import Config
 from pathlib import Path
 from datetime import date
 from typing import Sequence

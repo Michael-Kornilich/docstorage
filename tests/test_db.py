@@ -1,6 +1,7 @@
+from fixtures import *
 import sqlite3
 
-from src.db import (
+from docstorage.db import (
     resolve_db,
     import_file,
     fetch_file_set,
@@ -8,13 +9,8 @@ from src.db import (
     drop_file_set,
     get_healthcheck
 )
-from src.utility import DateInterval
-from src.config import Config
-
-from fixtures import *
-
-
-# TODO: decide how, and ship the 0.1.0
+from docstorage.utility import DateInterval
+from docstorage.config import Config
 
 
 def get_index_len():
