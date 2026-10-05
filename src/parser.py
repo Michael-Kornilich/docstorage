@@ -141,7 +141,7 @@ else:
     Local CLI document storage with Create, Read and Delete functionality.
     """.strip()
 
-arg_parser = _CLIArgumentParser(prog="launch.sh", description=desc)
+arg_parser = _CLIArgumentParser(prog="docstorage", description=desc)
 commands = arg_parser.add_subparsers(dest="command", required=True)
 
 import_parser = commands.add_parser("import", help="ingest a file")

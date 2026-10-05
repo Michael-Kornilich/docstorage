@@ -267,7 +267,8 @@ class TestFetch:
             fetch_file_set(name="normal-file-a.pdf", dry_run=False)
 
     def test_no_landing_dir(self, setup_populated_storage):
-        raise NotImplementedError("Not yet written.")
+        Path(setup_populated_storage / "landing").rmdir()
+        fetch_file_set(name="normal-file-a.pdf", dry_run=False)
 
 
 class TestRandom:

@@ -22,7 +22,7 @@ class Config:
             return
         else:
             self.env = "prod"
-            config_path: Path = user_config_path("launch.sh") / "config"
+            config_path: Path = user_config_path("docstorage") / "config"
 
         Path.mkdir(config_path, parents=True, exist_ok=True)
         self._configpath = config_path / "config.json"
@@ -30,12 +30,12 @@ class Config:
             return
 
         config = {
-            "db-path": Path(os.environ['PWD'] if self.env == "dev" else user_data_path("launch.sh")).joinpath(
+            "db-path": Path(os.environ['PWD'] if self.env == "dev" else user_data_path("docstorage")).joinpath(
                 "./volume/index/index.sqlite"),
-            "storage-path": Path(os.environ['PWD'] if self.env == "dev" else user_data_path("launch.sh")).joinpath(
+            "storage-path": Path(os.environ['PWD'] if self.env == "dev" else user_data_path("docstorage")).joinpath(
                 "./volume/storage"),
             "landing-directory": Path(
-                os.environ['PWD'] if self.env == "dev" else user_documents_path()) / "launch.sh-landing"
+                os.environ['PWD'] if self.env == "dev" else user_documents_path()) / "docstorage-landing"
         }
         with open(self._configpath, "w") as f:
             json.dump(config, f, indent=2)

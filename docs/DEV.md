@@ -14,22 +14,18 @@
 4. Run
 
 ```bash
-   poetry install &&
+   poetry install --with dev
 ```
-
-### Local build
-
-...
 
 ### Deploy
 
-...
+- Push to main, trigger the `ship-release.yaml` action
 
 ### Local development
 
-- **Run code**: `cd` to the project root; Run with `DOCSTORAGE_EVN="dev" poetry run python -m src.<file> <arguments>`
+- **Run code**: `cd` to the project root; Run with `DOCSTORAGE_ENV="dev" poetry run python -m src.<file> <arguments>`
 - **Run the whole app**: `cd` to the project root; the entrypoint is `src/main.py`; run with
-  `DOCSTORAGE_EVN="dev" poetry run python -m src.main <args>`
+  `DOCSTORAGE_ENV="dev" poetry run python -m src.main <args>`
 - **Test**: Run `DOCSTORAGE_ENV="test" poetry run python -m pytest` from `docstorage/`
 
 ### Production install
