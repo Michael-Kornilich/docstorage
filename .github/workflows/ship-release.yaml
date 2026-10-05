@@ -14,7 +14,7 @@ permissions:
 
 jobs:
   release:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26
 
     steps:
       - uses: actions/checkout@v4
@@ -42,10 +42,12 @@ jobs:
           python - <<'PY' >> "$GITHUB_OUTPUT"
           import json
           from urllib.request import urlopen
-
-          name = "docstorage"
-          with urlopen(f"https://pypi.org/pypi/{name}/json") as response:
-              version = json.load(response)["info"]["version"]
+          try:
+              with urlopen(f"https://pypi.org/pypi/docstorage/json") as response:
+                version = json.load(response)["info"]["version"]
+          except Exception as err:
+              # Exception should occur if the package has not been shipped yet
+              version = "0.0.1"
           print(f"version={version}")
           PY
 
@@ -86,7 +88,7 @@ jobs:
           git push origin HEAD
           git push origin "release-$VERSION"
 
-#      - name: Publish to PyPI
-#        env:
-#          POETRY_PYPI_TOKEN_DOCSTORAGE: ${{ secrets.PYPI_TOKEN }}
-#        run: poetry publish
+      - name: Publish to PyPI
+        env:
+          POETRY_PYPI_TOKEN_DOCSTORAGE: ${{ secrets.PYPI_TOKEN }}
+        run: poetry publish
