@@ -28,6 +28,9 @@
   `DOCSTORAGE_ENV="dev" poetry run python -m src.main <args>`
 - **Test**: Run `DOCSTORAGE_ENV="test" poetry run python -m pytest` from `docstorage/`
 
+> Note: when creating a new test file, always `from fixtures import *`. Because fixtures adjust sys.path so that source
+> code can be discovered
+
 ### Production install
 
 1. Make sure you have python (>=3.12) and pipx (>=1.4.0) installed
