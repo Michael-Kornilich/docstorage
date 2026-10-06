@@ -7,7 +7,10 @@ It is designed for personal documents such as mail, registrations, letters, invo
 deliberately narrow: reliably storing raw files, attaching useful metadata, and making matching files available when you
 need them.
 
-You can find more on the product and the user story in `docs/PRODUCT.md`.
+The app owns the files given to it. That is, is moves them into its internal storage from the host's location.
+All the management is then done via the CLI.
+
+You can find more on the product and the user story in `docs/PRODUCT.md` on GitHub.
 
 ## Installation guide
 
