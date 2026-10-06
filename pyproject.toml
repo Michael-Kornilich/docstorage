@@ -1,6 +1,6 @@
 [project]
 name = "docstorage"
-version = "0.0.1"
+version = "0.0.2"
 description = "A local, fully-managed file storage CLI app"
 authors = [
     { name = "Michael Kornilich", email = "molego16@gmail.com" }
