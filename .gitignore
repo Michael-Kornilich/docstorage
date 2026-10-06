@@ -2,7 +2,6 @@
 *.sqlite
 *.ipynb
 __pycache__
-tests/volume/*
 temp/
 volume
 config/*
