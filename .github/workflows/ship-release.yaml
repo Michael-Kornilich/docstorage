@@ -33,7 +33,6 @@ jobs:
         run: poetry install --with dev
 
       - name: Run tests
-        working-directory: /home/runner/work/docstorage
         run: DOCSTORAGE_ENV="test" poetry run python -m pytest
 
       - name: Read current PyPI version
