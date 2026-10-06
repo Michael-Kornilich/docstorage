@@ -33,6 +33,7 @@ jobs:
         run: poetry install --with dev
 
       - name: Run tests
+        working-directory: /home/runner/work/docstorage
         run: DOCSTORAGE_ENV="test" poetry run python -m pytest
 
       - name: Read current PyPI version
@@ -47,7 +48,7 @@ jobs:
                 version = json.load(response)["info"]["version"]
           except Exception as err:
               # Exception should occur if the package has not been shipped yet
-              version = "0.0.1"
+              version = "0.0.0"
           print(f"version={version}")
           PY
 
