@@ -33,7 +33,7 @@ jobs:
         run: poetry install --with dev
 
       - name: Run tests
-        run: DOCSTORAGE_ENV="test" poetry run python -m pytest
+        run: poetry run python -m pytest
 
       - name: Read current PyPI version
         id: pypi

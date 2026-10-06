@@ -26,7 +26,7 @@
 - **Run code**: `cd` to the project root; Run with `DOCSTORAGE_ENV="dev" poetry run python -m src.<file> <arguments>`
 - **Run the whole app**: `cd` to the project root; the entrypoint is `src/main.py`; run with
   `DOCSTORAGE_ENV="dev" poetry run python -m src.main <args>`
-- **Test**: Run `DOCSTORAGE_ENV="test" poetry run python -m pytest` from `docstorage/`
+- **Test**: Run `poetry run python -m pytest` from `docstorage/`
 
 > Note: when creating a new test file, always `from fixtures import *`. Because fixtures adjust sys.path so that source
 > code can be discovered
