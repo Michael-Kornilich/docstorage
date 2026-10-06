@@ -14,7 +14,7 @@ permissions:
 
 jobs:
   release:
-    runs-on: ubuntu-26
+    runs-on: ubuntu-26.04
 
     steps:
       - uses: actions/checkout@v4
