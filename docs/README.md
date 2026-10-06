@@ -16,7 +16,7 @@ You can find more on the product and the user story in `docs/PRODUCT.md`.
 3. Reopen terminal and set up the landing directory of your choice with
    `docstorage config set landing-directory <your directory>`
 
-The default landing directory is `$HOME/docstorage`. It's recommended to specify the custom directory from the get-go.
+The default landing directory is `<DOCUMENT-DIR>/docstorage`. It's recommended to specify the custom directory from the get-go.
 
 ## CLI Examples
 
@@ -35,13 +35,13 @@ Inspect or maintain the library:
     docstorage overview
     docstorage config list
 
-You can find the complete CLI reference in `docs/CLI.md`.
+You can find the complete CLI reference in `docs/CLI.md` on GitHub.
 
 ## Technical description
 
 The index uses SQLite, while Python manages the actual file movement and serving. Files are tracked with SHA-256 hashes.
 Import and retrieval operations are flag-based so common document workflows do not require writing SQL.
 
-You can find detailed technical description in `docs/DESIGN.md`.
+You can find detailed technical description in `docs/DESIGN.md` on GitHub.
 
-A developer / contributor getting-started guide is in `docs/DEV.md`.
+A developer / contributor getting-started guide is in `docs/DEV.md` on GitHub.

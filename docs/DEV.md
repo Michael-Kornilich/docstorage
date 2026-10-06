@@ -31,6 +31,8 @@
 > Note: when creating a new test file, always `from fixtures import *`. Because fixtures adjust sys.path so that source
 > code can be discovered
 
+- For a local installation run `pipx install --force .` from the project root
+
 ### Production install
 
 1. Make sure you have python (>=3.12) and pipx (>=1.4.0) installed

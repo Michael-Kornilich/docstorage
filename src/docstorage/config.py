@@ -30,31 +30,43 @@ class Config:
             return
 
         config = {
-            "db-path": Path(os.environ['PWD'] if self.env == "dev" else user_data_path("docstorage")).joinpath(
-                "./volume/index/index.sqlite"),
-            "storage-path": Path(os.environ['PWD'] if self.env == "dev" else user_data_path("docstorage")).joinpath(
-                "./volume/storage"),
-            "landing-directory": Path(
-                os.environ['PWD'] if self.env == "dev" else user_documents_path()) / "docstorage-landing"
+            "db-path": str(Path(os.environ['PWD'] if self.env == "dev" else user_data_path("docstorage")).joinpath(
+                "./volume/index/index.sqlite")),
+            "storage-path": str(Path(os.environ['PWD'] if self.env == "dev" else user_data_path("docstorage")).joinpath(
+                "./volume/storage")),
+            "landing-directory": str(Path(
+                os.environ['PWD'] if self.env == "dev" else user_documents_path()) / "docstorage-landing")
         }
         with open(self._configpath, "w") as f:
-            json.dump(config, f, indent=2)
+            json.dump(config, f)
+
+    def _load_config(self):
+        """Helper function to load the config"""
+        with open(self._configpath, "r") as f:
+            try:
+                config = json.load(f)
+            except Exception as err:
+                msg = f"""
+                Error while reading config file: {err}. 
+                Try to remove config from the following directory: '{str(self._configpath)}'
+                The app will then recreate a new (default) config.
+                """.strip()
+                raise ImportError(msg) from None
+        return config
 
     def __getitem__(self, key: str) -> str:
-        with open(self._configpath, "r") as f:
-            config = json.load(f)
+        config = self._load_config()
         if key not in config:
             raise KeyError(f"The {key} is invalid. Available keys are: {list(config.keys())}")
         return config[key]
 
     def __setitem__(self, key: str, value: str) -> None:
-        with open(self._configpath, "r") as f:
-            config = json.load(f)
+        config = self._load_config()
         if key not in config:
             raise KeyError(f"The {key} is invalid. Available keys are: {list(config.keys())}")
         config[key] = value
         with open(self._configpath, "w") as f:
-            json.dump(config, f, indent=2)
+            json.dump(config, f)
         return None
 
     def items(self):
