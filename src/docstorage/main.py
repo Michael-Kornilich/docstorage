@@ -175,6 +175,13 @@ def main():
                 for k, v in config.items():
                     print(f"{k}: {v}")
 
+    if arg_namespace.version:
+        import tomllib
+        with open(Path(__file__).parent.parent.parent / "pyproject.toml", "rb") as f:
+            pyproject = tomllib.load(f)
+        project_version = pyproject["project"]["version"]
+        print(project_version)
+
 
 if __name__ == "__main__":
     main()

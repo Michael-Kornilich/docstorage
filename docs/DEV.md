@@ -23,8 +23,8 @@
 
 ### Local development
 
-- **Run code**: `cd` to the project root; Run with `DOCSTORAGE_ENV="dev" poetry run python -m src.<file> <arguments>`
-- **Run the whole app**: `cd` to the project root; the entrypoint is `src/main.py`; run with
+- **Run code**: `cd` to `src`; Run with `DOCSTORAGE_ENV="dev" poetry run python -m src.<file> <arguments>`
+- **Run the whole app**: `cd` to `src`; the entrypoint is `src/main.py`; run with
   `DOCSTORAGE_ENV="dev" poetry run python -m src.main <args>`
 - **Test**: Run `poetry run python -m pytest` from `docstorage/`
 
