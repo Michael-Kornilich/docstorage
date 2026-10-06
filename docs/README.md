@@ -7,10 +7,11 @@ It is designed for personal documents such as mail, registrations, letters, invo
 deliberately narrow: reliably storing raw files, attaching useful metadata, and making matching files available when you
 need them.
 
-The app owns the files given to it. That is, is moves them into its internal storage from the host's location.
-All the management is then done via the CLI.
+The app owns the files given to it. That is, is moves them into its internal storage from the host's location. All the
+management is then done via the CLI.
 
-You can find more on the product and the user story in `docs/PRODUCT.md` on GitHub.
+You can find more on the product and the user story in `docs/PRODUCT.md`
+on [GitHub](https://github.com/Michael-Kornilich/docstorage/blob/main/docs/PRODUCT.md).
 
 ## Installation guide
 
@@ -19,7 +20,8 @@ You can find more on the product and the user story in `docs/PRODUCT.md` on GitH
 3. Reopen terminal and set up the landing directory of your choice with
    `docstorage config set landing-directory <your directory>`
 
-The default landing directory is `<DOCUMENT-DIR>/docstorage`. It's recommended to specify the custom directory from the get-go.
+The default landing directory is `<DOCUMENT-DIR>/docstorage`. It's recommended to specify the custom directory from the
+get-go.
 
 ## CLI Examples
 
@@ -38,13 +40,16 @@ Inspect or maintain the library:
     docstorage overview
     docstorage config list
 
-You can find the complete CLI reference in `docs/CLI.md` on GitHub.
+You can find the complete CLI reference in `docs/CLI.md`
+on [GitHub](https://github.com/Michael-Kornilich/docstorage/blob/main/docs/CLI.md).
 
 ## Technical description
 
 The index uses SQLite, while Python manages the actual file movement and serving. Files are tracked with SHA-256 hashes.
 Import and retrieval operations are flag-based so common document workflows do not require writing SQL.
 
-You can find detailed technical description in `docs/DESIGN.md` on GitHub.
+You can find detailed technical description in `docs/DESIGN.md`
+on [GitHub](https://github.com/Michael-Kornilich/docstorage/blob/main/docs/DESIGN.md).
 
-A developer / contributor getting-started guide is in `docs/DEV.md` on GitHub.
+A developer / contributor getting-started guide is in `docs/DEV.md`
+on [GitHub](https://github.com/Michael-Kornilich/docstorage/blob/main/docs/DEV.md).
