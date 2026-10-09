@@ -12,13 +12,18 @@ dependencies = [
     "platformdirs (>=4.12.2,<5.0.0)"
 ]
 
+[project.urls]
+Repository = "https://github.com/Michael-Kornilich/docstorage"
+Documentation = "https://github.com/Michael-Kornilich/docstorage/tree/main/docs"
+Issues = "https://github.com/Michael-Kornilich/docstorage/issues"
+
+[project.scripts]
+docstorage = "docstorage.main:main"
+
 [dependency-groups]
 dev = [
     "pytest (>=9.1.1,<10.0.0)",
 ]
-
-[project.scripts]
-docstorage = "docstorage.main:main"
 
 [tool.poetry]
 packages = [

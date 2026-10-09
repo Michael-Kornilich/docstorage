@@ -57,7 +57,6 @@ There will also be a `tags` table with:
 ## Development
 
 - pytest for testing
-- A dev installer script to set up configs and volumes inside the project (`scripts/dev-install.py`)
 
 ## Deployment
 
@@ -74,6 +73,7 @@ There will also be a `tags` table with:
 - Trigger the `ship-release.yaml` workflow
 
 `ship-release.yaml` workflow automatically does the following:
+
 - Tests the app (all tests must succeed)
 - Bumps the version according to the chosen release
 - Builds wheels with poetry

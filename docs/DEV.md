@@ -50,6 +50,8 @@ This was implemented this way for multiple reasons:
 
 - Run `poetry build` from the project root to build a wheel and the sdist
 
+This is usually not necessary since you can test and run locally after installing the package with `poetry install` 
+
 ### Production install
 
 1. Make sure you have python (>=3.12) and pipx (>=1.4.0) installed
