@@ -60,6 +60,10 @@ There will also be a `tags` table with:
 
 ## Deployment
 
+There 2 invariants that are guaranteed:
+1. After the installation the module (`docstorage`) will be available as an import (both internal and external)
+2. The metadata from `pyproject.toml` is guaranteed to be availabe per `importlib`
+
 ### Tooling
 
 - poetry as a package builder
