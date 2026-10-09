@@ -157,11 +157,13 @@ def main():
                     print(f"The following files were found unexpectedly in the storage: "
                           f"{', '.join(missing_in_index)}")
                 else:
-                    print(f"The following files were found unexpectedly in the storage: Nonea")
+                    print(f"The following files were found unexpectedly in the storage: None")
         case "overview":
             res = get_overview()
-            print(f"Total files: {res['n-total-files']}")
-            print(f"Tags used: {", ".join(res['unique-tags']) or 'None'}")
+            tag_string = ["'" + str(t) + "'" for t in res['unique-tags']]
+
+            print(f"Number of files stored: {res['n-total-files']}")
+            print(f"Tags used: {", ".join(tag_string) or 'None'}")
             if res["n-total-files"] > 0:
                 print(f"Min date created: {res['min-max-dates'][0]}")
                 print(f"Max date created: {res['min-max-dates'][1]}")
@@ -172,15 +174,14 @@ def main():
                 print("Configuration updated successfully!")
             elif arg_namespace.config_command == "list":
                 config = Config()
+                max_key_len = max(len(k) for k, v in config.items())
                 for k, v in config.items():
-                    print(f"{k}: {v}")
+                    print(str(k).strip(), " " * (max_key_len - len(k)), "= ", v)
 
     if arg_namespace.version:
-        import tomllib
-        with open(Path(__file__).parent.parent.parent / "pyproject.toml", "rb") as f:
-            pyproject = tomllib.load(f)
-        project_version = pyproject["project"]["version"]
-        print(project_version)
+        from importlib.metadata import version
+        v = version("docstorage")
+        print(v)
 
 
 if __name__ == "__main__":

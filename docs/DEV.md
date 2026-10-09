@@ -12,10 +12,15 @@
 2. Clone the repo
 3. cd to the project root
 4. Install all the dependencies *and* the docstorage package itself with:
+
 ```bash
    poetry install --with dev 
 ```
-by default, it installs it in editable mode
+
+by default, it installs it in editable mode.
+
+> Warning: the source code is editable, but not the `pyproject.toml`. Therefore, a re-installation is required to update
+> it
 
 ### Deploy
 
@@ -29,6 +34,7 @@ by default, it installs it in editable mode
 - **Test**: Run `poetry run pytest` from `docstorage/`
 
 The testing pipeline is:
+
 ```text
 (poetry install == installs the docstorage package in the environment =>) 
 run tests => 
@@ -36,26 +42,13 @@ the tests import the package from the poetry index. Changes are synced since edi
 ```
 
 This was implemented this way for multiple reasons:
+
 - To catch packaging errors early on. If `pyproject.toml` is invalid the package won't install
 - To avoid `sys.path.append` hacks for development since tests cannot discover `docstorage` package.
 
 ### Local build
 
 - Run `poetry build` from the project root to build a wheel and the sdist
-- Run `tar -tzf dist/docstorage-0.0.2.tar.gz` or wherever the `dist/` directory is
-- The output will be something like this:
-```text
-docstorage-0.0.2/docs/README.md
-docstorage-0.0.2/pyproject.toml
-docstorage-0.0.2/src/docstorage/__init__.py
-docstorage-0.0.2/src/docstorage/config.py
-docstorage-0.0.2/src/docstorage/db.py
-docstorage-0.0.2/src/docstorage/main.py
-docstorage-0.0.2/src/docstorage/parser.py
-docstorage-0.0.2/src/docstorage/utility.py
-docstorage-0.0.2/PKG-INFO
-```
-This exact structure will be installed with pipx
 
 ### Production install
 

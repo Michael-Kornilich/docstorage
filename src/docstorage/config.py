@@ -15,7 +15,6 @@ class Config:
     def __init__(self):
         if os.environ.get("DOCSTORAGE_ENV") == "dev":
             self.env = "dev"
-            print("Warning: the scripts assumes that the development is ran from the src/ directory.")
             config_path = Path(os.getcwd()).parent / "config"
         elif os.environ.get("DOCSTORAGE_ENV") == "test":
             self.env = "test"
