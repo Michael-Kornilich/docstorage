@@ -5,7 +5,7 @@ from docstorage.utility import DateInterval
 from docstorage.config import Config
 from pathlib import Path
 from datetime import date
-from typing import Sequence
+from typing import Sequence, Any
 from contextlib import contextmanager
 
 
@@ -129,7 +129,8 @@ def _get_feasible_file_set(
     where_restrictions = _build_where_restrictions(bool(id_), bool(name), bool(description_contains),
                                                    date_created, date_added, tags)
 
-    params = locals().copy()
+    params: dict[str, Any] = locals().copy()
+    glob_name = params.pop("name")
 
     # Prepare parameter for binding
     for param in ("date_added", "date_created"):
@@ -157,8 +158,23 @@ def _get_feasible_file_set(
                 {"WHERE " + where_restrictions if where_restrictions else ""}
                 """
         res = con.execute(select_query, params)
-        files_to_fetch = res.fetchall()
-        return [i[0] for i in files_to_fetch]
+        feasible_ids = res.fetchall()
+
+        # second stage globbing filter
+        from fnmatch import fnmatchcase
+        # TODO: test the list & test the globbing behavior
+        sql_list = "( " + ", ".join("'" + str(i) + "'" for i in feasible_ids) + " )"
+        select_query = f"""
+        SELECT
+            id,
+            name
+        FROM "index"
+        WHERE id IN ?
+        """
+        res = con.execute(select_query, [sql_list])
+        id_name = res.fetchall()
+        matching_ids = [i for i, n in id_name if fnmatchcase(n, glob_name)]
+        return matching_ids
 
 
 def get_healthcheck() -> dict | None:

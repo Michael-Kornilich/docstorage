@@ -206,6 +206,7 @@ and delete the following directories:
                 """.strip()
                 print(msg)
 
+    # TODO: test
     if arg_namespace.version:
         from importlib.metadata import version
         v = version("docstorage")
