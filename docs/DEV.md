@@ -11,11 +11,11 @@
 1. Make sure to have poetry installed
 2. Clone the repo
 3. cd to the project root
-4. Run
-
+4. Install all the dependencies *and* the docstorage package itself with:
 ```bash
-   poetry install --no-root --with dev 
+   poetry install --with dev 
 ```
+by default, it installs it in editable mode
 
 ### Deploy
 
@@ -25,13 +25,37 @@
 
 - **Run code**: `cd` to `src`; Run with `DOCSTORAGE_ENV="dev" poetry run python -m src.<file> <arguments>`
 - **Run the whole app**: `cd` to `src`; the entrypoint is `src/main.py`; run with
-  `DOCSTORAGE_ENV="dev" poetry run python -m src.main <args>`
-- **Test**: Run `poetry run python -m pytest` from `docstorage/`
+  `DOCSTORAGE_ENV="dev" poetry run docstorage <args>`
+- **Test**: Run `poetry run pytest` from `docstorage/`
 
-> Note: when creating a new test file, always `from fixtures import *`. Because fixtures adjust sys.path so that source
-> code can be discovered
+The testing pipeline is:
+```text
+(poetry install == installs the docstorage package in the environment =>) 
+run tests => 
+the tests import the package from the poetry index. Changes are synced since editable mode 
+```
 
-- For a local installation run `pipx install --force .` from the project root
+This was implemented this way for multiple reasons:
+- To catch packaging errors early on. If `pyproject.toml` is invalid the package won't install
+- To avoid `sys.path.append` hacks for development since tests cannot discover `docstorage` package.
+
+### Local build
+
+- Run `poetry build` from the project root to build a wheel and the sdist
+- Run `tar -tzf dist/docstorage-0.0.2.tar.gz` or wherever the `dist/` directory is
+- The output will be something like this:
+```text
+docstorage-0.0.2/docs/README.md
+docstorage-0.0.2/pyproject.toml
+docstorage-0.0.2/src/docstorage/__init__.py
+docstorage-0.0.2/src/docstorage/config.py
+docstorage-0.0.2/src/docstorage/db.py
+docstorage-0.0.2/src/docstorage/main.py
+docstorage-0.0.2/src/docstorage/parser.py
+docstorage-0.0.2/src/docstorage/utility.py
+docstorage-0.0.2/PKG-INFO
+```
+This exact structure will be installed with pipx
 
 ### Production install
 

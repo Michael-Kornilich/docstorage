@@ -36,7 +36,7 @@ def resolve_db() -> None:
 
     For both cases the whole path is created (mkdir -p)
 
-    Get the storage and db paths from the local.josn config.
+    Get the storage and db paths from config.Config.
 
     Expected keys: 'db-path', 'storage-path'
     """
@@ -219,8 +219,9 @@ def import_file(
 ) -> None:
     """
     Moves the specified file into the internal storage and adds and entry to the index.
-    Owns file checking. Path checking is done upstream
-    Parameters are assumed true
+    Owns file checking. Path checking should be done upstream
+    Parameters are assumed true.
+    External values are taken from config.Config
     """
 
     STORAGE_PATH = Path(Config()["storage-path"])
@@ -281,7 +282,10 @@ def fetch_file_set(
     Unspecified restrictions (None) are ignored.
 
     None describes a non-existent condition. For example name=None means that the name is irrelevant in selection
+
     dry_run: If true, do not fetch any files, but return a tuple of potentially fetched ones.
+
+    Parameters are assumed true. External values are taken from config.Config
     """
     config = Config()
     DB_PATH, STORAGE_PATH = Path(config["db-path"]), Path(config["storage-path"])
@@ -341,8 +345,13 @@ def fetch_file_set(
 
 def get_overview() -> dict:
     """
-    Returns a dictionary of total number of files stored ("total-n-files": int),
-    unique tags ("unique-tags": tuple), and the first and last date created ("min-max-dates": tuple with dates, or an empty tuple)
+    Returns a dictionary of
+
+    - total number of files stored {"total-n-files": int},
+
+    - unique tags {"unique-tags": tuple[str]}
+
+    - the first and last date created {"min-max-dates": tuple[date, date] | tuple[sentinel]}
     """
     DB_PATH = Path(Config()["db-path"])
     with sqlite3.connect(DB_PATH) as con:
@@ -435,6 +444,8 @@ def drop_file_set(
     Tags: A file is considered a match if intersect of its tags is non-empty with the given tags
 
     dry_run: If true, do not drop any files, but return the number of potentially dropped files.
+
+    Parameters are assumed true. External values are taken from config.Config
     """
     config = Config()
     DB_PATH, STORAGE_PATH = Path(config["db-path"]), Path(config["storage-path"])
