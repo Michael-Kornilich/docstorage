@@ -86,7 +86,10 @@ def main():
             if not arg_namespace.dry_run:
                 print("File fetched successfully!")
             else:
-                print(tabulate_fileset(res))
+                if res:
+                    print(tabulate_fileset(res))
+                else:
+                    print("No matching files found.")
         case "delete":
             if arg_namespace.dry_run:
                 matching_files = fetch_file_set(
@@ -177,6 +180,31 @@ def main():
                 max_key_len = max(len(k) for k, v in config.items())
                 for k, v in config.items():
                     print(str(k).strip(), " " * (max_key_len - len(k)), "= ", v)
+        case "uninstall":
+            import os
+            if os.environ.get("DOCSTORAGE_ENV") in ("dev", "test"):
+                print("You shouldn't uninstall the app in the dev / test environment.")
+            else:
+                res = get_overview()
+                config = Config()
+                root = next(
+                    p for p in Path(config["db-path"]).parents if p.name == "volume"
+                ).parent
+                cfg = Path(config._configpath).parent
+
+                msg = f"""
+Warning: uninstalling docstorage will delete all the docstorage data
+stored on this machine. This action cannot be undone.
+
+Currently, you have {res['n-total-files']} files, which will be lost forever.
+If you wish to first fetch them run `docstorage fetch *`.
+
+To proceed with the delete run the following command: `pipx uninstall docstorage`
+and delete the following directories:
+- {str(root)}
+- {str(cfg)}             
+                """.strip()
+                print(msg)
 
     if arg_namespace.version:
         from importlib.metadata import version

@@ -184,6 +184,8 @@ set_parser = config_commands.add_parser("set", help="set a configuration field")
 set_parser.add_argument("field")
 set_parser.add_argument("value")
 
+uninstall_parser = commands.add_parser("uninstall", help="remove docstorage binary and its stored data")
+
 if __name__ == "__main__":
     res = arg_parser.parse_args()
     print(res)

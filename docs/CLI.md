@@ -73,9 +73,10 @@ The file name can be supplied either as the positional `name` argument or with `
 Examples:
 
 ```bash
+docstorage fetch "certificate.pdf"
 docstorage fetch --tags finance --date-created ">=2025-01-01"
 docstorage fetch --name "certificate.pdf"
-docstorage fetch --tags finance --dry-run
+docstorage fetch --tags finance --dry-run "registration.pdf"
 ```
 
 ## `delete`
