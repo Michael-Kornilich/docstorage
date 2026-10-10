@@ -74,6 +74,7 @@ Examples:
 
 ```bash
 docstorage fetch "certificate.pdf"
+docstorage fetch "*"
 docstorage fetch --tags finance --date-created ">=2025-01-01"
 docstorage fetch --name "certificate.pdf"
 docstorage fetch --tags finance --dry-run "registration.pdf"

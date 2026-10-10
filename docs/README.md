@@ -1,5 +1,7 @@
 # Docstorage
 
+* GitHub - https://github.com/Michael-Kornilich/docstorage
+
 Docstorage is a small, local document library for people who want their files organized without running a server,
 configuring a web application, or sending anything to the cloud.
 
@@ -34,6 +36,7 @@ Fetch matching files into the configured landing directory:
 
     docstorage fetch --tags finance --date-created ">=2025-01-01"
     docstorage fetch --name "certificate.pdf"
+    docstorage fetch "*"
 
 Inspect or maintain the library:
 
