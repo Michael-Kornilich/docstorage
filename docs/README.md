@@ -11,7 +11,7 @@ The app owns the files given to it. That is, is moves them into its internal sto
 management is then done via the CLI.
 
 You can find more on the product and the user story in `docs/PRODUCT.md`
-on [GitHub](https://github.com/Michael-Kornilich/docstorage/blob/main/docs/PRODUCT.md).
+on GitHub.
 
 ## Installation guide
 
@@ -41,7 +41,7 @@ Inspect or maintain the library:
     docstorage config list
 
 You can find the complete CLI reference in `docs/CLI.md`
-on [GitHub](https://github.com/Michael-Kornilich/docstorage/blob/main/docs/CLI.md).
+on GitHub.
 
 ## Technical description
 
@@ -49,7 +49,7 @@ The index uses SQLite, while Python manages the actual file movement and serving
 Import and retrieval operations are flag-based so common document workflows do not require writing SQL.
 
 You can find detailed technical description in `docs/DESIGN.md`
-on [GitHub](https://github.com/Michael-Kornilich/docstorage/blob/main/docs/DESIGN.md).
+on GitHub.
 
 A developer / contributor getting-started guide is in `docs/DEV.md`
-on [GitHub](https://github.com/Michael-Kornilich/docstorage/blob/main/docs/DEV.md).
+on GitHub.
