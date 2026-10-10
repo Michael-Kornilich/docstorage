@@ -346,7 +346,8 @@ def fetch_file_set(
         Path(config["landing-directory"]).mkdir(parents=True)
 
     # Empty dir regardless of the flag
-    if not list(Path(config["landing-directory"]).iterdir()):
+    # WARNING: an overwrite will happen if a user happens to store a .DS_Store file
+    if not [i for i in Path(config["landing-directory"]).iterdir() if not i.name != ".DS_Store"]:
         for (_, hash_, name_, *_) in files_to_fetch:
             shutil.copy2(STORAGE_PATH / hash_, Path(config["landing-directory"]) / name_)
         return None
