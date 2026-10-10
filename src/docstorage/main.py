@@ -1,5 +1,5 @@
 def main():
-    """The exposed function to pipx"""
+    """The function exposed to pipx"""
     from docstorage.parser import arg_parser
     from docstorage.db import (
         resolve_db,
@@ -52,7 +52,7 @@ def main():
     try:
         resolve_db()
     except Exception as err:
-        raise RuntimeError(f"Couldn't resolve database: {err} ({type(err).__name__})") from err
+        raise SystemExit(f"Couldn't resolve database: {err} ({type(err).__name__}")
 
     match arg_namespace.command:
         case "import":
@@ -64,7 +64,7 @@ def main():
                     tags=arg_namespace.tags if arg_namespace.tags else tuple(),
                 )
             except Exception as err:
-                print(f"Couldn't import file: {err} ({type(err).__name__})")
+                raise SystemExit(f"Couldn't import file: {err} ({type(err).__name__})")
             else:
                 print("File imported successfully!")
         case "fetch":
@@ -80,8 +80,7 @@ def main():
                     keep_existing=arg_namespace.keep_existing,
                 )
             except Exception as err:
-                print(f"Couldn't fetch file: {err} ({type(err).__name__})")
-                quit()
+                raise SystemExit(f"Couldn't fetch file: {err} ({type(err).__name__})")
 
             if not arg_namespace.dry_run:
                 print("File fetched successfully!")
@@ -91,42 +90,29 @@ def main():
                 else:
                     print("No matching files found.")
         case "delete":
+            matching_files: tuple = fetch_file_set(
+                id_=arg_namespace.id,
+                name=arg_namespace.name,
+                description_contains=arg_namespace.description_contains,
+                date_created=arg_namespace.date_created,
+                date_added=arg_namespace.date_added,
+                tags=arg_namespace.tags if arg_namespace.tags else tuple(),
+                dry_run=True,
+            )
+
             if arg_namespace.dry_run:
-                matching_files = fetch_file_set(
-                    id_=arg_namespace.id,
-                    name=arg_namespace.name,
-                    description_contains=arg_namespace.description_contains,
-                    date_created=arg_namespace.date_created,
-                    date_added=arg_namespace.date_added,
-                    tags=arg_namespace.tags if arg_namespace.tags else tuple(),
-                    dry_run=True,
-                )
-                print("Matching files:", end="\n\n")
+                print(f"Matching file{'s' if len(matching_files) > 1 else ''}:", end="\n\n")
                 print(tabulate_fileset(matching_files), end="\n\n")
                 if arg_namespace.all:
                     print("(the operation will delete all matching files)")
                 if not arg_namespace.all and len(matching_files) > 1:
                     print("(use --all to delete all matching files)")
-                quit()
+                raise SystemExit(0)
 
-            try:
-                n_matching_files = drop_file_set(
-                    id_=arg_namespace.id,
-                    name=arg_namespace.name,
-                    description_contains=arg_namespace.description_contains,
-                    date_created=arg_namespace.date_created,
-                    date_added=arg_namespace.date_added,
-                    tags=arg_namespace.tags if arg_namespace.tags else tuple(),
-                    dry_run=True,
+            if len(matching_files) > 1 and not arg_namespace.all:
+                raise SystemExit(
+                    f"Multiple files ({len(matching_files)}) match the given criteria. Use --all to delete all of them."
                 )
-            except Exception as err:
-                print(f"Couldn't inspect files: {err} ({type(err).__name__})")
-                quit()
-
-            if n_matching_files > 1 and not arg_namespace.all:
-                print(f"Multiple files ({n_matching_files}) match the given criteria. Use --all to delete all of them.",
-                      end="\n\n")
-                quit()
 
             try:
                 drop_file_set(
@@ -139,9 +125,9 @@ def main():
                     dry_run=False,
                 )
             except Exception as err:
-                print(f"Couldn't drop file(s): {err} ({type(err).__name__})")
-                quit()
-            print("File(s) deleted successfully!")
+                raise SystemExit(f"Couldn't drop files: {err} ({type(err).__name__})")
+            print(f"File{'s' if len(matching_files) > 1 else ''} deleted successfully!")
+
         case "healthcheck":
             report = get_healthcheck()
             if report is None:
@@ -161,6 +147,7 @@ def main():
                           f"{', '.join(missing_in_index)}")
                 else:
                     print(f"The following files were found unexpectedly in the storage: None")
+                raise SystemExit(1)
         case "overview":
             res = get_overview()
             tag_string = ["'" + str(t) + "'" for t in res['unique-tags']]
@@ -173,7 +160,10 @@ def main():
         case "config":
             if arg_namespace.config_command == "set":
                 config = Config()
-                config[arg_namespace.field] = arg_namespace.value
+                try:
+                    config[arg_namespace.field] = arg_namespace.value
+                except Exception as err:
+                    raise SystemExit(f"Couldn't update config: {err} ({type(err).__name__})")
                 print("Configuration updated successfully!")
             elif arg_namespace.config_command == "list":
                 config = Config()

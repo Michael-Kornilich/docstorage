@@ -476,6 +476,8 @@ def drop_file_set(
     dry_run: If true, do not drop any files, but return the number of potentially dropped files.
 
     Parameters are assumed true. External values are taken from config.Config
+
+    Returns the number of potentially affected files if dry ran, None if the actual drop is performed
     """
     config = Config()
     DB_PATH, STORAGE_PATH = Path(config["db-path"]), Path(config["storage-path"])
