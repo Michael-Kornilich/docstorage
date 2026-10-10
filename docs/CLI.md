@@ -59,7 +59,7 @@ The file name can be supplied either as the positional `name` argument or with `
 
 ### Filters
 
-- `name` or `--name NAME`, `-n NAME` — match a file name.
+- `name` or `--name NAME`, `-n NAME` — match a file name. Supports glob pattern matching.
 - `--id ID` — match a file ID shown in a file listing.
 - `--description-contains TEXT` — match descriptions containing the given text, up to 300 characters.
 - `--date-created DATE | DATE-RANGE`, `-dc DATE | DATE-RANGE` — match by creation date.

@@ -126,11 +126,17 @@ def _get_feasible_file_set(
     config = Config()
     DB_PATH, STORAGE_PATH = Path(config["db-path"]), Path(config["storage-path"])
 
-    where_restrictions = _build_where_restrictions(bool(id_), bool(name), bool(description_contains),
-                                                   date_created, date_added, tags)
+    where_restrictions = _build_where_restrictions(
+        id_=bool(id_),
+        description_contains=bool(description_contains),
+        date_created=date_created,
+        date_added=date_added,
+        tags=tags
+    )
 
     params: dict[str, Any] = locals().copy()
-    glob_name = params.pop("name")
+    # name == None trips glob matching
+    glob_pattern = params.pop("name") or "*"
 
     # Prepare parameter for binding
     for param in ("date_added", "date_created"):
@@ -158,22 +164,22 @@ def _get_feasible_file_set(
                 {"WHERE " + where_restrictions if where_restrictions else ""}
                 """
         res = con.execute(select_query, params)
-        feasible_ids = res.fetchall()
+        feasible_ids = tuple(i[0] for i in res.fetchall())
+        if len(feasible_ids) == 0:
+            return []
 
         # second stage globbing filter
-        from fnmatch import fnmatchcase
-        # TODO: test the list & test the globbing behavior
-        sql_list = "( " + ", ".join("'" + str(i) + "'" for i in feasible_ids) + " )"
+        from fnmatch import fnmatch
         select_query = f"""
         SELECT
             id,
             name
         FROM "index"
-        WHERE id IN ?
+        WHERE id IN (? {", ?" * (len(feasible_ids) - 1)})
         """
-        res = con.execute(select_query, [sql_list])
+        res = con.execute(select_query, feasible_ids)
         id_name = res.fetchall()
-        matching_ids = [i for i, n in id_name if fnmatchcase(n, glob_name)]
+        matching_ids = [i for i, n in id_name if fnmatch(n, glob_pattern)]
         return matching_ids
 
 
@@ -302,6 +308,14 @@ def fetch_file_set(
     dry_run: If true, do not fetch any files, but return a tuple of potentially fetched ones.
 
     Parameters are assumed true. External values are taken from config.Config
+
+    Returns a tuple of tuples where each has:
+        id,
+        sha256,
+        name,
+        description,
+        date_created,
+        date_added
     """
     config = Config()
     DB_PATH, STORAGE_PATH = Path(config["db-path"]), Path(config["storage-path"])

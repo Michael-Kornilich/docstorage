@@ -6,6 +6,7 @@ from docstorage.db import (
     import_file,
     fetch_file_set,
     _build_where_restrictions,
+    _get_feasible_file_set,
     drop_file_set,
     get_healthcheck
 )
@@ -162,7 +163,17 @@ class TestWhereClauseBuild:
 
 
 class TestFeasibleSet:
-    pass
+    def test_no_match(self, setup_populated_storage):
+        res = _get_feasible_file_set(id_=10)
+        assert len(res) == 0
+
+    def test_glob_name(self, setup_populated_storage):
+        res = _get_feasible_file_set(name="*")
+        assert len(res) == 3
+
+    def test_empty_db(self, setup_db):
+        res = _get_feasible_file_set(name="normal-file-a.pdf")
+        assert len(res) == 0
 
 
 class TestDelete:
@@ -230,6 +241,27 @@ class TestFetch:
         assert get_storage_len() == 3
         assert get_index_len() == 3
         assert get_landing_dir_len() == 0
+
+    def test_glob_fetch(self, setup_populated_storage):
+        out = fetch_file_set(name="*.pdf", dry_run=False)
+        assert out is None
+        assert get_storage_len() == 3
+        assert get_index_len() == 3
+        assert get_landing_dir_len() == 3
+
+    def test_glob_fetch2(self, setup_populated_storage):
+        out = fetch_file_set(name="*a.pdf", dry_run=False)
+        assert out is None
+        assert get_storage_len() == 3
+        assert get_index_len() == 3
+        assert get_landing_dir_len() == 1
+
+    def test_glob_fetch3(self, setup_populated_storage):
+        out = fetch_file_set(name="*", dry_run=False)
+        assert out is None
+        assert get_storage_len() == 3
+        assert get_index_len() == 3
+        assert get_landing_dir_len() == 3
 
     def test_missing_fetch(self, setup_populated_storage):
         out = fetch_file_set(name="hello-world", dry_run=False)
