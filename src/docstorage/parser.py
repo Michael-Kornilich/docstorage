@@ -95,17 +95,21 @@ def _limited_text(value):
 
 
 class _CLIArgumentParser(argparse.ArgumentParser):
-    """Normalize the two mutually-exclusive name forms after parsing. Raise if both are provided"""
+    """Normalize names and enforce the version/command exclusivity rule."""
 
     def parse_args(self, args=None, namespace=None):
         parsed = super().parse_args(args, namespace)
-        # Argparse prevents both arguments provided upstream
         if hasattr(parsed, "name_positional") or hasattr(parsed, "name_option"):
             positional = getattr(parsed, "name_positional", None)
             option = getattr(parsed, "name_option", None)
             parsed.name = positional if positional is not None else option
             delattr(parsed, "name_positional")
             delattr(parsed, "name_option")
+
+        if parsed.version and parsed.command is not None:
+            self.error("argument --version [-v]: not allowed with a command")
+        if not parsed.version and parsed.command is None:
+            self.error("the following arguments are required: command")
         return parsed
 
 
@@ -142,7 +146,13 @@ else:
     """.strip()
 
 arg_parser = _CLIArgumentParser(prog="docstorage", description=desc)
-commands = arg_parser.add_subparsers(dest="command", required=True)
+
+# Add a mutually exclusive group: either this flag or everything else
+arg_parser.add_argument("-v", "--version", action="store_true", default=False)
+
+# ``argparse`` cannot add a subparser action to a mutually exclusive group.
+# Make it optional here and enforce the equivalent rule in ``parse_args``.
+commands = arg_parser.add_subparsers(dest="command", required=False)
 
 import_parser = commands.add_parser("import", help="ingest a file")
 import_parser.add_argument("--description", "-de", type=_limited_text, default=None, metavar="TEXT",
@@ -173,6 +183,8 @@ config_commands.add_parser("list", help="show current configuration")
 set_parser = config_commands.add_parser("set", help="set a configuration field")
 set_parser.add_argument("field")
 set_parser.add_argument("value")
+
+uninstall_parser = commands.add_parser("uninstall", help="remove docstorage binary and its stored data")
 
 if __name__ == "__main__":
     res = arg_parser.parse_args()

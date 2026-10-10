@@ -5,7 +5,7 @@ from docstorage.utility import DateInterval
 from docstorage.config import Config
 from pathlib import Path
 from datetime import date
-from typing import Sequence
+from typing import Sequence, Any
 from contextlib import contextmanager
 
 
@@ -36,7 +36,7 @@ def resolve_db() -> None:
 
     For both cases the whole path is created (mkdir -p)
 
-    Get the storage and db paths from the local.josn config.
+    Get the storage and db paths from config.Config.
 
     Expected keys: 'db-path', 'storage-path'
     """
@@ -126,10 +126,17 @@ def _get_feasible_file_set(
     config = Config()
     DB_PATH, STORAGE_PATH = Path(config["db-path"]), Path(config["storage-path"])
 
-    where_restrictions = _build_where_restrictions(bool(id_), bool(name), bool(description_contains),
-                                                   date_created, date_added, tags)
+    where_restrictions = _build_where_restrictions(
+        id_=bool(id_),
+        description_contains=bool(description_contains),
+        date_created=date_created,
+        date_added=date_added,
+        tags=tags
+    )
 
-    params = locals().copy()
+    params: dict[str, Any] = locals().copy()
+    # name == None trips glob matching
+    glob_pattern = params.pop("name") or "*"
 
     # Prepare parameter for binding
     for param in ("date_added", "date_created"):
@@ -157,8 +164,23 @@ def _get_feasible_file_set(
                 {"WHERE " + where_restrictions if where_restrictions else ""}
                 """
         res = con.execute(select_query, params)
-        files_to_fetch = res.fetchall()
-        return [i[0] for i in files_to_fetch]
+        feasible_ids = tuple(i[0] for i in res.fetchall())
+        if len(feasible_ids) == 0:
+            return []
+
+        # second stage globbing filter
+        from fnmatch import fnmatch
+        select_query = f"""
+        SELECT
+            id,
+            name
+        FROM "index"
+        WHERE id IN (? {", ?" * (len(feasible_ids) - 1)})
+        """
+        res = con.execute(select_query, feasible_ids)
+        id_name = res.fetchall()
+        matching_ids = [i for i, n in id_name if fnmatch(n, glob_pattern)]
+        return matching_ids
 
 
 def get_healthcheck() -> dict | None:
@@ -219,8 +241,9 @@ def import_file(
 ) -> None:
     """
     Moves the specified file into the internal storage and adds and entry to the index.
-    Owns file checking. Path checking is done upstream
-    Parameters are assumed true
+    Owns file checking. Path checking should be done upstream
+    Parameters are assumed true.
+    External values are taken from config.Config
     """
 
     STORAGE_PATH = Path(Config()["storage-path"])
@@ -281,7 +304,18 @@ def fetch_file_set(
     Unspecified restrictions (None) are ignored.
 
     None describes a non-existent condition. For example name=None means that the name is irrelevant in selection
+
     dry_run: If true, do not fetch any files, but return a tuple of potentially fetched ones.
+
+    Parameters are assumed true. External values are taken from config.Config
+
+    Returns a tuple of tuples where each has:
+        id,
+        sha256,
+        name,
+        description,
+        date_created,
+        date_added
     """
     config = Config()
     DB_PATH, STORAGE_PATH = Path(config["db-path"]), Path(config["storage-path"])
@@ -341,8 +375,13 @@ def fetch_file_set(
 
 def get_overview() -> dict:
     """
-    Returns a dictionary of total number of files stored ("total-n-files": int),
-    unique tags ("unique-tags": tuple), and the first and last date created ("min-max-dates": tuple with dates, or an empty tuple)
+    Returns a dictionary of
+
+    - total number of files stored {"total-n-files": int},
+
+    - unique tags {"unique-tags": tuple[str]}
+
+    - the first and last date created {"min-max-dates": tuple[date, date] | tuple[sentinel]}
     """
     DB_PATH = Path(Config()["db-path"])
     with sqlite3.connect(DB_PATH) as con:
@@ -435,6 +474,8 @@ def drop_file_set(
     Tags: A file is considered a match if intersect of its tags is non-empty with the given tags
 
     dry_run: If true, do not drop any files, but return the number of potentially dropped files.
+
+    Parameters are assumed true. External values are taken from config.Config
     """
     config = Config()
     DB_PATH, STORAGE_PATH = Path(config["db-path"]), Path(config["storage-path"])

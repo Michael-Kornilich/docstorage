@@ -11,11 +11,16 @@
 1. Make sure to have poetry installed
 2. Clone the repo
 3. cd to the project root
-4. Run
+4. Install all the dependencies *and* the docstorage package itself with:
 
 ```bash
-   poetry install --no-root --with dev 
+   poetry install --with dev 
 ```
+
+by default, it installs it in editable mode.
+
+> Warning: the source code is editable, but not the `pyproject.toml`. Therefore, a re-installation is required to update
+> it
 
 ### Deploy
 
@@ -23,15 +28,29 @@
 
 ### Local development
 
-- **Run code**: `cd` to the project root; Run with `DOCSTORAGE_ENV="dev" poetry run python -m src.<file> <arguments>`
-- **Run the whole app**: `cd` to the project root; the entrypoint is `src/main.py`; run with
-  `DOCSTORAGE_ENV="dev" poetry run python -m src.main <args>`
-- **Test**: Run `poetry run python -m pytest` from `docstorage/`
+- **Run code**: `cd` to `src`; Run with `DOCSTORAGE_ENV="dev" poetry run python -m src.<file> <arguments>`
+- **Run the whole app**: `cd` to `src`; the entrypoint is `src/main.py`; run with
+  `DOCSTORAGE_ENV="dev" poetry run docstorage <args>`
+- **Test**: Run `poetry run pytest` from `docstorage/`
 
-> Note: when creating a new test file, always `from fixtures import *`. Because fixtures adjust sys.path so that source
-> code can be discovered
+The testing pipeline is:
 
-- For a local installation run `pipx install --force .` from the project root
+```text
+(poetry install == installs the docstorage package in the environment =>) 
+run tests => 
+the tests import the package from the poetry index. Changes are synced since editable mode 
+```
+
+This was implemented this way for multiple reasons:
+
+- To catch packaging errors early on. If `pyproject.toml` is invalid the package won't install
+- To avoid `sys.path.append` hacks for development since tests cannot discover `docstorage` package.
+
+### Local build
+
+- Run `poetry build` from the project root to build a wheel and the sdist
+
+This is usually not necessary since you can test and run locally after installing the package with `poetry install` 
 
 ### Production install
 

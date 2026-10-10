@@ -1,16 +1,9 @@
-import sys
-from pathlib import Path
-
-sys.path.append(
-    str((Path(__file__).parent.parent / "src").resolve())
-)
-
 import pytest
 import json
 import shutil
 from docstorage.db import resolve_db, import_file
 from datetime import date
-
+from pathlib import Path
 
 # Fixture Hierarchy
 # - setup_db_environment

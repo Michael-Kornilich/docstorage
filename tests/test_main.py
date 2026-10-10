@@ -51,3 +51,8 @@ class TestGetOverview:
         res = get_overview()
         assert res == {"n-total-files": 3, "unique-tags": tuple("tag" + str(i) for i in range(1, 6)),
                        "min-max-dates": (date(2024, 1, 1), date(2026, 1, 1))}
+
+
+class TestGetVersion:
+    def test_normal(self, setup_populated_storage):
+        pass

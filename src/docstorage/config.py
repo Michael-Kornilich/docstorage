@@ -8,14 +8,14 @@ from platformdirs import user_config_path, user_data_path, user_documents_path
 class Config:
     """Config class representing the configurator object.
     Resolves and populates the default config at init time
-    Methods: get and set item
+
+    Supports reads and writes into the config file via Config()[key] = value
     """
 
     def __init__(self):
         if os.environ.get("DOCSTORAGE_ENV") == "dev":
             self.env = "dev"
-            print("Warning: the scripts assumes that the development is ran from the project root.")
-            config_path = Path(os.getcwd()) / "config"
+            config_path = Path(os.getcwd()).parent / "config"
         elif os.environ.get("DOCSTORAGE_ENV") == "test":
             self.env = "test"
             self._configpath = Path(os.environ["TEST_CONFIG_PATH"])
@@ -29,14 +29,25 @@ class Config:
         if self._configpath.exists():
             return
 
-        config = {
-            "db-path": str(Path(os.environ['PWD'] if self.env == "dev" else user_data_path("docstorage")).joinpath(
-                "./volume/index/index.sqlite")),
-            "storage-path": str(Path(os.environ['PWD'] if self.env == "dev" else user_data_path("docstorage")).joinpath(
-                "./volume/storage")),
-            "landing-directory": str(Path(
-                os.environ['PWD'] if self.env == "dev" else user_documents_path()) / "docstorage-landing")
-        }
+        if self.env == "dev":
+            config = {
+                "db-path": str(Path(os.environ['PWD']).parent.joinpath("./volume/index/index.sqlite").resolve()),
+                "storage-path": str(Path(os.environ['PWD']).parent.joinpath("./volume/storage").resolve()),
+                "landing-directory": str(Path(os.environ['PWD']).parent.joinpath("./landing-dir").resolve()),
+            }
+        else:
+            try:
+                landing_path = user_documents_path()
+            except Exception as err:
+                print(f"Documents path not found ({err}). Defaulting to home directory.")
+                landing_path = Path.home()
+
+            config = {
+                "db-path": str(user_data_path("docstorage").joinpath("./volume/index/index.sqlite").resolve()),
+                "storage-path": str(user_data_path("docstorage").joinpath("./volume/storage")),
+                "landing-directory": str(landing_path / "docstorage-landing")
+            }
+
         with open(self._configpath, "w") as f:
             json.dump(config, f)
 
@@ -62,8 +73,14 @@ class Config:
 
     def __setitem__(self, key: str, value: str) -> None:
         config = self._load_config()
+
         if key not in config:
             raise KeyError(f"The {key} is invalid. Available keys are: {list(config.keys())}")
+        try:
+            value = str(value)
+        except Exception as err:
+            raise TypeError(f"Cannot coerce '{value}' to string: {err}") from None
+
         config[key] = value
         with open(self._configpath, "w") as f:
             json.dump(config, f)
