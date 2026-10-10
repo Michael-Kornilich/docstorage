@@ -31,9 +31,9 @@ class Config:
 
         if self.env == "dev":
             config = {
-                "db-path": str(Path(os.environ['PWD']).parent.joinpath("./volume/index/index.sqlite").resolve()),
-                "storage-path": str(Path(os.environ['PWD']).parent.joinpath("./volume/storage").resolve()),
-                "landing-directory": str(Path(os.environ['PWD']).parent.joinpath("./landing-dir").resolve()),
+                "db-path": str(Path(os.environ['PWD']).joinpath("./volume/index/index.sqlite").resolve()),
+                "storage-path": str(Path(os.environ['PWD']).joinpath("./volume/storage").resolve()),
+                "landing-directory": str(Path(os.environ['PWD']).joinpath("./landing-dir").resolve()),
             }
         else:
             try:

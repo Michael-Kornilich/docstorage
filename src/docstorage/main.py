@@ -82,13 +82,13 @@ def main():
             except Exception as err:
                 raise SystemExit(f"Couldn't fetch file: {err} ({type(err).__name__})")
 
-            if not arg_namespace.dry_run:
-                print("File fetched successfully!")
-            else:
+            if arg_namespace.dry_run:
                 if res:
                     print(tabulate_fileset(res))
                 else:
                     print("No matching files found.")
+            else:
+                print("File fetched successfully!")
         case "delete":
             matching_files: tuple = fetch_file_set(
                 id_=arg_namespace.id,
@@ -149,11 +149,23 @@ def main():
                     print(f"The following files were found unexpectedly in the storage: None")
                 raise SystemExit(1)
         case "overview":
-            res = get_overview()
-            tag_string = ["'" + str(t) + "'" for t in res['unique-tags']]
+            from tabulate import tabulate
+            from itertools import batched
 
-            print(f"Number of files stored: {res['n-total-files']}")
-            print(f"Tags used: {", ".join(tag_string) or 'None'}")
+            res = get_overview()
+
+            print(f"Number of files stored: {res['n-total-files']}", end="\n\n")
+
+            tags = list(res["unique-tags"])
+            if tags:
+                tags = ["'" + t + "'" for t in tags]
+                # padding for the tabular expression
+                tags += [""] * (10 - len(tags) % 10)
+                tags = [b for b in batched(tags, 10)]
+                print(f"Tags stored:\n{tabulate(tags, tablefmt="plain")}", end="\n\n")
+            else:
+                print(f"No tags stored", end="\n\n")
+
             if res["n-total-files"] > 0:
                 print(f"Min date created: {res['min-max-dates'][0]}")
                 print(f"Max date created: {res['min-max-dates'][1]}")
