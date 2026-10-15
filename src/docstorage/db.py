@@ -277,6 +277,8 @@ def import_file(
             with open(STORAGE_PATH / hexdigest, mode="wb") as target_file:
                 target_file.write(binary)
             source.unlink()
+    except sqlite3.IntegrityError as err:
+        raise ImportError("Duplicate file already exists.") from err
     except Exception as err:
         Path(STORAGE_PATH / hexdigest).unlink(missing_ok=True)
         raise ImportError(f"Could not update the index: {type(err).__name__} - {err}") from err
@@ -347,7 +349,11 @@ def fetch_file_set(
 
     # Empty dir regardless of the flag
     # WARNING: an overwrite will happen if a user happens to store a .DS_Store file
-    if not [i for i in Path(config["landing-directory"]).iterdir() if not i.name != ".DS_Store"]:
+    files_in_landing = [i.name for i in Path(config["landing-directory"]).iterdir()]
+    if ".DS_Store" in files_in_landing:
+        files_in_landing.remove(".DS_Store")
+
+    if len(files_in_landing) == 0:
         for (_, hash_, name_, *_) in files_to_fetch:
             shutil.copy2(STORAGE_PATH / hash_, Path(config["landing-directory"]) / name_)
         return None

@@ -116,11 +116,19 @@ class TestImport:
             import_file(filepath, "some description",
                         date(2026, 1, 1), ["tag1", "tag2"])
 
+        assert get_storage_len() == 1
+        assert get_tags_len() == 2
+        assert get_index_len() == 1
+
     def test_duplicate_tags(self, setup_db, setup_files_to_move):
         filepath = setup_files_to_move / "normal-file-a.pdf"
         with pytest.raises(ImportError):
             import_file(filepath, "some description",
                         date(2026, 1, 1), ["tag", "tag"])
+
+        assert get_storage_len() == 0
+        assert get_tags_len() == 0
+        assert get_index_len() == 0
 
     # Missing file and directory will not be tested here
 
@@ -289,7 +297,7 @@ class TestFetch:
         for i in Path(setup_populated_storage / "landing").iterdir():
             assert i.name in ("normal-file-a.pdf", "normal-file-a (1).pdf", "normal-file-a (2).pdf")
 
-    def test_existing_but_no_key(self, setup_populated_storage):
+    def test_existing_but_no_keep_flag(self, setup_populated_storage):
         fetch_file_set(name="normal-file-a.pdf", dry_run=False)
         with pytest.raises(FileExistsError):
             fetch_file_set(name="normal-file-a.pdf", dry_run=False)
