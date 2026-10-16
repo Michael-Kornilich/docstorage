@@ -55,7 +55,7 @@ class TestResolve:
 
     def test_empty_existing_db(self, setup_db_environment):
         volume_path = setup_db_environment
-        (volume_path / "volume" / "index" / "index.db").touch()
+        (volume_path / "volume" / "index" / "index.sqlite").touch()
         with pytest.raises(RuntimeError):
             resolve_db()
 
@@ -70,6 +70,26 @@ class TestResolve:
 
 class TestImport:
     def test_normal_import(self, setup_db, setup_files_to_move):
+        filepath = setup_files_to_move / "normal-file-a.pdf"
+        should_bytes = filepath.read_bytes()
+        import_file(filepath, "some description",
+                    date(2026, 1, 1), ["tag1", "tag2"])
+
+        assert get_storage_len() == 1, "The file has not been moved successfully"
+        assert get_tags_len() == 2
+
+        internal_filepath: Path = list(Path(setup_db / "volume" / "storage").iterdir())[0]
+        got_bytes = internal_filepath.read_bytes()
+
+        assert got_bytes == should_bytes, "Bytes mismatch"
+
+    def test_normal_import_no_drop(self, setup_db, setup_files_to_move):
+        with open(setup_db / "config" / "config.json", "r") as f:
+            config = json.load(f)
+        config["delete-original"] = "False"
+        with open(setup_db / "config" / "config.json", "w") as f:
+            json.dump(config, f)
+
         filepath = setup_files_to_move / "normal-file-a.pdf"
         should_bytes = filepath.read_bytes()
         import_file(filepath, "some description",

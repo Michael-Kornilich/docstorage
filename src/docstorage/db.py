@@ -245,8 +245,9 @@ def import_file(
     Parameters are assumed true.
     External values are taken from config.Config
     """
-
-    STORAGE_PATH = Path(Config()["storage-path"])
+    config = Config()
+    DROP_ORIGINAL = config["delete-original"]
+    STORAGE_PATH = Path(config["storage-path"])
 
     try:
         with open(source, mode="rb") as source_file:
@@ -276,7 +277,9 @@ def import_file(
 
             with open(STORAGE_PATH / hexdigest, mode="wb") as target_file:
                 target_file.write(binary)
-            source.unlink()
+
+            if DROP_ORIGINAL:
+                source.unlink()
     except sqlite3.IntegrityError as err:
         raise ImportError("Duplicate file already exists.") from err
     except Exception as err:
