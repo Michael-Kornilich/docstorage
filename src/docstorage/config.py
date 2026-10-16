@@ -47,7 +47,7 @@ class Config:
                 "db-path": str(user_data_path("docstorage").joinpath("./volume/index/index.sqlite").resolve()),
                 "storage-path": str(user_data_path("docstorage").joinpath("./volume/storage")),
                 "landing-directory": str(landing_path / "docstorage-landing"),
-                "delete-original": str("False"),
+                "delete-original": "False",
             }
 
         with open(self.configpath, "w") as f:
@@ -82,6 +82,9 @@ class Config:
             value = str(value)
         except Exception as err:
             raise TypeError(f"Cannot coerce '{value}' to string: {err}") from None
+
+        if key == "delete-original" and value not in ["True", "False"]:
+            raise ValueError(f"Invalid value for 'delete-original': '{value}'. Only 'True' and 'False' are allowed.'")
 
         config[key] = value
         with open(self.configpath, "w") as f:

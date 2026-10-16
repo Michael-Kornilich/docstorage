@@ -38,6 +38,14 @@ def get_tags_len():
     return len(res)
 
 
+def get_number_original_files(tmp_path):
+    n_files = 0
+    for obj in Path(tmp_path).iterdir():
+        if obj.is_file():
+            n_files += 1
+    return n_files
+
+
 class TestResolve:
     # TODO: paths pointing towards a file
     def test_first_start(self, setup_db_environment):
@@ -69,7 +77,13 @@ class TestResolve:
 
 
 class TestImport:
-    def test_normal_import(self, setup_db, setup_files_to_move):
+    def test_normal_import_drop(self, setup_db, setup_files_to_move):
+        with open(setup_db / "config" / "config.json", "r") as f:
+            config = json.load(f)
+        config["delete-original"] = "True"
+        with open(setup_db / "config" / "config.json", "w") as f:
+            json.dump(config, f)
+
         filepath = setup_files_to_move / "normal-file-a.pdf"
         should_bytes = filepath.read_bytes()
         import_file(filepath, "some description",
@@ -82,6 +96,7 @@ class TestImport:
         got_bytes = internal_filepath.read_bytes()
 
         assert got_bytes == should_bytes, "Bytes mismatch"
+        assert get_number_original_files(setup_db) == 5, "The file has not been dropped. Should have."
 
     def test_normal_import_no_drop(self, setup_db, setup_files_to_move):
         with open(setup_db / "config" / "config.json", "r") as f:
@@ -102,6 +117,7 @@ class TestImport:
         got_bytes = internal_filepath.read_bytes()
 
         assert got_bytes == should_bytes, "Bytes mismatch"
+        assert get_number_original_files(setup_db) == 6, "The file has been dropped. Should not have."
 
     def test_normal_whitespace_import(self, setup_db, setup_files_to_move):
         filepath = setup_files_to_move / "normal file c.pdf"
@@ -116,12 +132,14 @@ class TestImport:
         got_bytes = internal_filepath.read_bytes()
 
         assert got_bytes == should_bytes, "Bytes mismatch"
+        assert get_number_original_files(setup_db) == 6, "The file has been dropped. Should not have."
 
     def test_zero_bytes_import(self, setup_db, setup_files_to_move):
         filepath = setup_files_to_move / "empty_file.pdf"
         with pytest.raises(ImportError):
             import_file(filepath, "some description",
                         date(2026, 1, 1), ["tag1", "tag2"])
+        assert get_number_original_files(setup_db) == 6, "The file has been dropped. Should not have."
 
     def test_forbidden_import(self, setup_db):
         pass
@@ -139,6 +157,7 @@ class TestImport:
         assert get_storage_len() == 1
         assert get_tags_len() == 2
         assert get_index_len() == 1
+        assert get_number_original_files(setup_db) == 6, "The file has been dropped. Should not have."
 
     def test_duplicate_tags(self, setup_db, setup_files_to_move):
         filepath = setup_files_to_move / "normal-file-a.pdf"
@@ -149,6 +168,7 @@ class TestImport:
         assert get_storage_len() == 0
         assert get_tags_len() == 0
         assert get_index_len() == 0
+        assert get_number_original_files(setup_db) == 6, "The file has been dropped. Should not have."
 
     # Missing file and directory will not be tested here
 
@@ -366,7 +386,10 @@ class TestRandom:
         assert get_index_len() == len(records)
         assert get_storage_len() == len(records)
         assert get_tags_len() == len([t for i in records for t in i["tags"]])
-        assert all(not (source_dir / record["name"]).exists() for record in records)
+        assert all((source_dir / record["name"]).exists() for record in records)
+
+        for record in records:
+            (source_dir / record["name"]).unlink()
 
         selected = records[randint(0, test_size - 1)]
         lower_days = randint(0, 365)

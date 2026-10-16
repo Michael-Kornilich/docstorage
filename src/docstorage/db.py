@@ -278,7 +278,7 @@ def import_file(
             with open(STORAGE_PATH / hexdigest, mode="wb") as target_file:
                 target_file.write(binary)
 
-            if DROP_ORIGINAL:
+            if DROP_ORIGINAL == "True":
                 source.unlink()
     except sqlite3.IntegrityError as err:
         raise ImportError("Duplicate file already exists.") from err

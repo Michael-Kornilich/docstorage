@@ -48,7 +48,7 @@ def setup_incomplete_db_environment(tmp_path, monkeypatch):
         "db-path": str((tmp_path / "volume" / "index" / "index.db").resolve()),
         "storage-path": str((tmp_path / "volume" / "storage").resolve()),
         "landing-directory": str((tmp_path / "landing").resolve()),
-        "delete-original": str("False"),
+        "delete-original": "False",
     }
     with open(tmp_path / "config" / "config.json", "w") as f:
         json.dump(config, f)
