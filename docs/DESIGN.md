@@ -27,7 +27,7 @@ The app ingests files as follows:
 
 - (begin DB commit) write file hash and metadata
 - Copy the target file into the internal storage
-- (Optionally) delete the source file
+- (Optionally) delete the source file when `delete-original` is `True` (defaults to `False`)
 - If all successful ⇒ commit DB transaction
 
 The app copies files into the landing directory. In case of name collision return filename, filename (1), filename (2)
@@ -35,7 +35,7 @@ based on which files were fetched first.
 
 Fail-safes:
 
-- In case a file cannot be moved or any error occurs upon copying or deleting, the program errors out and the DB
+- In case a file cannot be copied or any error occurs upon copying or deleting, the program errors out and the DB
   transaction is aborted
 - If the process crashes, the user can use a backup to restore the last state (not implemented yet)
 

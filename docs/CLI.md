@@ -36,6 +36,14 @@ Options:
 - `--tags TAGS`, `-t TAGS` — comma-separated tags, for example
   `bank,finance`.
 
+Imports copy the source file into internal storage by default and leave the original in place. To move the source file
+instead, set `delete-original` to `True` with the configuration command. The source is deleted only after the import
+has completed successfully:
+
+```bash
+docstorage config set delete-original True
+```
+
 Example:
 
 ```bash
@@ -157,4 +165,11 @@ docstorage config set <field> <value>
 
 ```bash
 docstorage config set landing-directory "/path/to/landing-directory"
+```
+
+Set `delete-original` to `True` to delete source files after a successful import. Its default value is `False`, which
+copies files while leaving the originals in place:
+
+```bash
+docstorage config set delete-original True
 ```
