@@ -23,7 +23,8 @@ registrations, mail, etc. It has to have the following features:
 **Ingest**
 
 - The user will call the cli with filepath, and provide optional metadata.
-- The system moves the file into the internal storage and stores the metadata.
+- The system copies the file into the internal storage and stores the metadata. By default, the source remains in
+  place; users can opt to delete the source after a successful import.
 
 **Fetch**
 

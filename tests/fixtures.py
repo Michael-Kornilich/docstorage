@@ -5,6 +5,7 @@ from docstorage.db import resolve_db, import_file
 from datetime import date
 from pathlib import Path
 
+
 # Fixture Hierarchy
 # - setup_db_environment
 # - setup_files_to_move
@@ -26,8 +27,9 @@ def setup_db_environment(tmp_path, monkeypatch):
 
     config = {
         "landing-directory": str((tmp_path / "landing").resolve()),
-        "db-path": str((tmp_path / "volume" / "index" / "index.db").resolve()),
+        "db-path": str((tmp_path / "volume" / "index" / "index.sqlite").resolve()),
         "storage-path": str((tmp_path / "volume" / "storage").resolve()),
+        "delete-original": "False",
     }
     with open(tmp_path / "config" / "config.json", "w") as f:
         json.dump(config, f)
@@ -46,6 +48,7 @@ def setup_incomplete_db_environment(tmp_path, monkeypatch):
         "db-path": str((tmp_path / "volume" / "index" / "index.db").resolve()),
         "storage-path": str((tmp_path / "volume" / "storage").resolve()),
         "landing-directory": str((tmp_path / "landing").resolve()),
+        "delete-original": "False",
     }
     with open(tmp_path / "config" / "config.json", "w") as f:
         json.dump(config, f)

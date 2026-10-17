@@ -34,3 +34,9 @@ def test_set_bad_config(setup_db_environment):
         Config()["unknown"] = "new/directory"
 
     try_reading_config(setup_db_environment / "config" / "config.json")
+
+
+def test_set_bad_config_bool(setup_db_environment):
+    config = Config()
+    with pytest.raises(ValueError):
+        config["delete-original"] = "Hello"

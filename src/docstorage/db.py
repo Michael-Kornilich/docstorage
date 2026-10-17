@@ -1,4 +1,5 @@
 """Database- and storage-related functions"""
+import json
 import sqlite3
 import shutil
 from docstorage.utility import DateInterval
@@ -6,6 +7,7 @@ from docstorage.config import Config
 from pathlib import Path
 from datetime import date
 from typing import Sequence, Any
+from docstorage.utility import freeze
 from contextlib import contextmanager
 
 
@@ -245,8 +247,9 @@ def import_file(
     Parameters are assumed true.
     External values are taken from config.Config
     """
-
-    STORAGE_PATH = Path(Config()["storage-path"])
+    config = Config()
+    DROP_ORIGINAL = config["delete-original"]
+    STORAGE_PATH = Path(config["storage-path"])
 
     try:
         with open(source, mode="rb") as source_file:
@@ -276,7 +279,11 @@ def import_file(
 
             with open(STORAGE_PATH / hexdigest, mode="wb") as target_file:
                 target_file.write(binary)
-            source.unlink()
+
+            if DROP_ORIGINAL == "True":
+                source.unlink()
+    except sqlite3.IntegrityError as err:
+        raise ImportError("Duplicate file already exists.") from err
     except Exception as err:
         Path(STORAGE_PATH / hexdigest).unlink(missing_ok=True)
         raise ImportError(f"Could not update the index: {type(err).__name__} - {err}") from err
@@ -315,7 +322,8 @@ def fetch_file_set(
         name,
         description,
         date_created,
-        date_added
+        date_added,
+        tuple[tags]
     """
     config = Config()
     DB_PATH, STORAGE_PATH = Path(config["db-path"]), Path(config["storage-path"])
@@ -326,19 +334,29 @@ def fetch_file_set(
     with sqlite3.connect(DB_PATH) as con:
         res = con.execute(f"""
         SELECT  
-            id,
+            "index".id,
             sha256,
             name,
             description,
             date_created,
-            date_added
+            date_added,
+            json_group_array("tags".tag)
+                FILTER (WHERE "tags".tag IS NOT NULL) AS tags
         FROM "index"
-        WHERE id in ({", ".join(ids)})
+        LEFT JOIN "tags" ON "index".id = "tags".id
+        WHERE "index".id in ({", ".join(ids)})
+        GROUP BY 1, 2, 3, 4, 5, 6
         """)
         files_to_fetch = res.fetchall()
+        temp = []
+        for *o, t in files_to_fetch:
+            other = [str(i) for i in o]
+            _tags = [str(i) for i in json.loads(t)]
+            other.append(_tags)
+            temp.append(other)
+        files_to_fetch = freeze(temp)
 
     if dry_run:
-        files_to_fetch = tuple(tuple(map(str, row)) for row in files_to_fetch)
         return files_to_fetch
 
     if not Path(config["landing-directory"]).exists():
@@ -346,7 +364,12 @@ def fetch_file_set(
         Path(config["landing-directory"]).mkdir(parents=True)
 
     # Empty dir regardless of the flag
-    if not list(Path(config["landing-directory"]).iterdir()):
+    # WARNING: an overwrite will happen if a user happens to store a .DS_Store file
+    files_in_landing = [i.name for i in Path(config["landing-directory"]).iterdir()]
+    if ".DS_Store" in files_in_landing:
+        files_in_landing.remove(".DS_Store")
+
+    if len(files_in_landing) == 0:
         for (_, hash_, name_, *_) in files_to_fetch:
             shutil.copy2(STORAGE_PATH / hash_, Path(config["landing-directory"]) / name_)
         return None
@@ -382,7 +405,11 @@ def get_overview() -> dict:
     - unique tags {"unique-tags": tuple[str]}
 
     - the first and last date created {"min-max-dates": tuple[date, date] | tuple[sentinel]}
+
+    - the table of the last 10 imported files {"last-10-files-table": str}
     """
+    from docstorage.utility import tabulate_fileset
+
     DB_PATH = Path(Config()["db-path"])
     with sqlite3.connect(DB_PATH) as con:
         ids = con.execute("""SELECT COUNT(distinct id)
@@ -397,12 +424,27 @@ def get_overview() -> dict:
                                       FROM "index" """).fetchall()
         border_dates = border_dates[0]
 
+        out = fetch_file_set(dry_run=True)
+        out = list(out)
+        out.sort(key=lambda x: x[4], reverse=True)
+        if len(out) > 11:
+            out = out[:10]
+        else:
+            out = out
+
+        last_10_files = tabulate_fileset(out)
+
         if all(border_dates):
             border_dates = tuple(date.fromisoformat(i) for i in border_dates)
         else:
             border_dates = tuple()
 
-    return {"n-total-files": n_files, "unique-tags": tags, "min-max-dates": border_dates}
+    return {
+        "n-total-files": n_files,
+        "unique-tags": tags,
+        "min-max-dates": border_dates,
+        "last-10-files-table": last_10_files
+    }
 
 
 # --------------------------------------
@@ -476,6 +518,8 @@ def drop_file_set(
     dry_run: If true, do not drop any files, but return the number of potentially dropped files.
 
     Parameters are assumed true. External values are taken from config.Config
+
+    Returns the number of potentially affected files if dry ran, None if the actual drop is performed
     """
     config = Config()
     DB_PATH, STORAGE_PATH = Path(config["db-path"]), Path(config["storage-path"])

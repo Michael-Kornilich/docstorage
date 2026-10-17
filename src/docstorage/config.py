@@ -15,25 +15,26 @@ class Config:
     def __init__(self):
         if os.environ.get("DOCSTORAGE_ENV") == "dev":
             self.env = "dev"
-            config_path = Path(os.getcwd()).parent / "config"
+            config_path = Path(os.getcwd()) / "config"
         elif os.environ.get("DOCSTORAGE_ENV") == "test":
             self.env = "test"
-            self._configpath = Path(os.environ["TEST_CONFIG_PATH"])
+            self.configpath = Path(os.environ["TEST_CONFIG_PATH"])
             return
         else:
             self.env = "prod"
             config_path: Path = user_config_path("docstorage") / "config"
 
         Path.mkdir(config_path, parents=True, exist_ok=True)
-        self._configpath = config_path / "config.json"
-        if self._configpath.exists():
+        self.configpath = config_path / "config.json"
+        if self.configpath.exists():
             return
 
         if self.env == "dev":
             config = {
-                "db-path": str(Path(os.environ['PWD']).parent.joinpath("./volume/index/index.sqlite").resolve()),
-                "storage-path": str(Path(os.environ['PWD']).parent.joinpath("./volume/storage").resolve()),
-                "landing-directory": str(Path(os.environ['PWD']).parent.joinpath("./landing-dir").resolve()),
+                "db-path": str(Path(os.environ['PWD']).joinpath("./volume/index/index.sqlite").resolve()),
+                "storage-path": str(Path(os.environ['PWD']).joinpath("./volume/storage").resolve()),
+                "landing-directory": str(Path(os.environ['PWD']).joinpath("./landing-dir").resolve()),
+                "delete-original": "False",
             }
         else:
             try:
@@ -45,21 +46,22 @@ class Config:
             config = {
                 "db-path": str(user_data_path("docstorage").joinpath("./volume/index/index.sqlite").resolve()),
                 "storage-path": str(user_data_path("docstorage").joinpath("./volume/storage")),
-                "landing-directory": str(landing_path / "docstorage-landing")
+                "landing-directory": str(landing_path / "docstorage-landing"),
+                "delete-original": "False",
             }
 
-        with open(self._configpath, "w") as f:
+        with open(self.configpath, "w") as f:
             json.dump(config, f)
 
     def _load_config(self):
         """Helper function to load the config"""
-        with open(self._configpath, "r") as f:
+        with open(self.configpath, "r") as f:
             try:
                 config = json.load(f)
             except Exception as err:
                 msg = f"""
                 Error while reading config file: {err}. 
-                Try to remove config from the following directory: '{str(self._configpath)}'
+                Try to remove config from the following directory: '{str(self.configpath)}'
                 The app will then recreate a new (default) config.
                 """.strip()
                 raise ImportError(msg) from None
@@ -81,13 +83,16 @@ class Config:
         except Exception as err:
             raise TypeError(f"Cannot coerce '{value}' to string: {err}") from None
 
+        if key == "delete-original" and value not in ["True", "False"]:
+            raise ValueError(f"Invalid value for 'delete-original': '{value}'. Only 'True' and 'False' are allowed.'")
+
         config[key] = value
-        with open(self._configpath, "w") as f:
+        with open(self.configpath, "w") as f:
             json.dump(config, f)
         return None
 
     def items(self):
-        with open(self._configpath, "r") as f:
+        with open(self.configpath, "r") as f:
             config = json.load(f)
         for i in config.items():
             yield i

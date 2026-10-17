@@ -18,7 +18,8 @@ Main objects:
 - Configs: There are 2 configs - the user config and local config. The former includes the user specified landing
   directory. The latter internal paths to the database and storage. These are filled at install-time via the installer.
 
-The default landing directory is `$HOME/docstorage`. It's recommended to specify the custom directory from the get-go.
+The default landing directory is `<Document directory>/docstorage`. It's recommended to specify the custom directory
+from the get-go.
 
 ## App design
 
@@ -26,7 +27,7 @@ The app ingests files as follows:
 
 - (begin DB commit) write file hash and metadata
 - Copy the target file into the internal storage
-- (Try to) delete the source file
+- (Optionally) delete the source file when `delete-original` is `True` (defaults to `False`)
 - If all successful ⇒ commit DB transaction
 
 The app copies files into the landing directory. In case of name collision return filename, filename (1), filename (2)
@@ -34,7 +35,7 @@ based on which files were fetched first.
 
 Fail-safes:
 
-- In case a file cannot be moved or any error occurs upon copying or deleting, the program errors out and the DB
+- In case a file cannot be copied or any error occurs upon copying or deleting, the program errors out and the DB
   transaction is aborted
 - If the process crashes, the user can use a backup to restore the last state (not implemented yet)
 
@@ -54,6 +55,9 @@ There will also be a `tags` table with:
 - document id (foreign key)
 - tag
 
+Files are deduplicated by *hash*. So changing file's name won't reimport it. To assign a file to different use-cases use
+tags.
+
 ## Development
 
 - pytest for testing
@@ -61,6 +65,7 @@ There will also be a `tags` table with:
 ## Deployment
 
 There 2 invariants that are guaranteed:
+
 1. After the installation the module (`docstorage`) will be available as an import (both internal and external)
 2. The metadata from `pyproject.toml` is guaranteed to be availabe per `importlib`
 

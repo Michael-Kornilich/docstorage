@@ -1,5 +1,7 @@
 # Docstorage
 
+* GitHub - https://github.com/Michael-Kornilich/docstorage
+
 Docstorage is a small, local document library for people who want their files organized without running a server,
 configuring a web application, or sending anything to the cloud.
 
@@ -7,8 +9,9 @@ It is designed for personal documents such as mail, registrations, letters, invo
 deliberately narrow: reliably storing raw files, attaching useful metadata, and making matching files available when you
 need them.
 
-The app owns the files given to it. That is, is moves them into its internal storage from the host's location. All the
-management is then done via the CLI.
+The app stores a copy of the files given to it in its internal storage. By default, the original files remain at their
+source locations. If desired, set the `delete-original` configuration option to `True` to remove each source file after
+it has been imported successfully. All further management is then done via the CLI.
 
 You can find more on the product and the user story in `docs/PRODUCT.md`
 on GitHub.
@@ -30,10 +33,15 @@ Import a file:
     docstorage import "path/to/doc.pdf"
     docstorage import --description "Bank statement" --date-created 2025-01-05 --tags bank,finance "path/to/file.pdf"
 
+Imports copy files by default. To move files instead, enable source deletion:
+
+    docstorage config set delete-original True
+
 Fetch matching files into the configured landing directory:
 
     docstorage fetch --tags finance --date-created ">=2025-01-01"
     docstorage fetch --name "certificate.pdf"
+    docstorage fetch "*"
 
 Inspect or maintain the library:
 
@@ -45,7 +53,8 @@ on GitHub.
 
 ## Technical description
 
-The index uses SQLite, while Python manages the actual file movement and serving. Files are tracked with SHA-256 hashes.
+The index uses SQLite, while Python manages file copying, optional source deletion, and serving. Files are tracked with
+SHA-256 hashes.
 Import and retrieval operations are flag-based so common document workflows do not require writing SQL.
 
 You can find detailed technical description in `docs/DESIGN.md`
