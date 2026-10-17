@@ -12,40 +12,7 @@ def main():
     from docstorage.config import Config
     from datetime import date
     from pathlib import Path
-
-    def tabulate_fileset(file_set: tuple[tuple[str, ...], ...]) -> str:
-        """Create a table display of the given file set.
-        Each tuple in the file set is expected to have the following properties in the order:
-            file id
-            hash
-            name
-            description
-            date_created
-            date_added
-        """
-        if len(file_set) == 0:
-            return ""
-
-        display_rows = []
-        for file_id, hash_, name_, description, date_created_, date_added_ in file_set:
-            if len(description) > 23:
-                description = f"{description[:10]}...{description[-10:]}"
-            display_rows.append((
-                f"({file_id})",
-                name_ or "-",
-                description,
-                date.fromisoformat(date_created_).strftime("%Y.%m.%d") if date_created_ else "",
-                date.fromisoformat(date_added_).strftime("%Y.%m.%d") if date_added_ else "",
-            ))
-
-        if display_rows:
-            from tabulate import tabulate
-
-            table = tabulate(display_rows, headers=("Id", "Name", "Description", "Created on", "Added on"))
-        else:
-            table = ""
-        total_files = f"Total {len(file_set)} files."
-        return (table + "\n\n" + total_files).strip()
+    from docstorage.utility import tabulate_fileset
 
     arg_namespace = arg_parser.parse_args()
 
@@ -81,7 +48,7 @@ def main():
                 )
             except Exception as err:
                 raise SystemExit(f"Couldn't fetch file: {err} ({type(err).__name__})")
-
+            # TODO: add tags to the presentation
             if arg_namespace.dry_run:
                 if res:
                     print(tabulate_fileset(res))
@@ -168,7 +135,9 @@ def main():
 
             if res["n-total-files"] > 0:
                 print(f"Min date created: {res['min-max-dates'][0]}")
-                print(f"Max date created: {res['min-max-dates'][1]}")
+                print(f"Max date created: {res['min-max-dates'][1]}", end="\n\n")
+                print("Last 10 files imported:", end="\n\n")
+                print(res["last-10-files-table"])
         case "config":
             if arg_namespace.config_command == "set":
                 config = Config()

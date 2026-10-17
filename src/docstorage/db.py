@@ -405,7 +405,11 @@ def get_overview() -> dict:
     - unique tags {"unique-tags": tuple[str]}
 
     - the first and last date created {"min-max-dates": tuple[date, date] | tuple[sentinel]}
+
+    - the table of the last 10 imported files {"last-10-files-table": str}
     """
+    from docstorage.utility import tabulate_fileset
+
     DB_PATH = Path(Config()["db-path"])
     with sqlite3.connect(DB_PATH) as con:
         ids = con.execute("""SELECT COUNT(distinct id)
@@ -420,12 +424,27 @@ def get_overview() -> dict:
                                       FROM "index" """).fetchall()
         border_dates = border_dates[0]
 
+        out = fetch_file_set(dry_run=True)
+        out = list(out)
+        out.sort(key=lambda x: x[4], reverse=True)
+        if len(out) > 11:
+            out = out[:10]
+        else:
+            out = out
+
+        last_10_files = tabulate_fileset(out)
+
         if all(border_dates):
             border_dates = tuple(date.fromisoformat(i) for i in border_dates)
         else:
             border_dates = tuple()
 
-    return {"n-total-files": n_files, "unique-tags": tags, "min-max-dates": border_dates}
+    return {
+        "n-total-files": n_files,
+        "unique-tags": tags,
+        "min-max-dates": border_dates,
+        "last-10-files-table": last_10_files
+    }
 
 
 # --------------------------------------

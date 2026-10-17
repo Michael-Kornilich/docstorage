@@ -42,13 +42,16 @@ class TestHealthcheck:
 class TestGetOverview:
     def test_empty(self, setup_db):
         res = get_overview()
-        assert set(res.keys()) == {"n-total-files", "unique-tags", "min-max-dates"}
+        assert res.keys() == {"n-total-files", "unique-tags", "min-max-dates", "last-10-files-table"}
         assert res["n-total-files"] == 0, "Files"
         assert res["unique-tags"] == tuple(), "Tags"
         assert res["min-max-dates"] == tuple(), "Dates"
+        assert res["last-10-files-table"] == ""
 
     def test_normal(self, setup_populated_storage):
         res = get_overview()
+        assert res.keys() == {"n-total-files", "unique-tags", "min-max-dates", "last-10-files-table"}
+        res.pop("last-10-files-table")
         assert res == {"n-total-files": 3, "unique-tags": tuple("tag" + str(i) for i in range(1, 6)),
                        "min-max-dates": (date(2024, 1, 1), date(2026, 1, 1))}
 
