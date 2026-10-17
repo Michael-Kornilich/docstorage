@@ -87,7 +87,7 @@ def tabulate_fileset(file_set: tuple[tuple[str, ...], ...]) -> str:
     if display_rows:
         from tabulate import tabulate
 
-        table = tabulate(display_rows, headers=("Id", "Name", "Description", "Created on", "Added on"))
+        table = tabulate(display_rows, headers=("Id", "Name", "Description", "Created on", "Added on", "Tags"))
     else:
         table = ""
 
