@@ -48,7 +48,6 @@ def main():
                 )
             except Exception as err:
                 raise SystemExit(f"Couldn't fetch file: {err} ({type(err).__name__})")
-            # TODO: add tags to the presentation
             if arg_namespace.dry_run:
                 if res:
                     print(tabulate_fileset(res))
@@ -161,7 +160,7 @@ def main():
                 root = next(
                     p for p in Path(config["db-path"]).parents if p.name == "volume"
                 ).parent
-                cfg = Path(config._configpath).parent
+                cfg = Path(config.configpath).parent
 
                 msg = f"""
 Warning: uninstalling docstorage will delete all the docstorage data
@@ -177,7 +176,6 @@ and delete the following directories:
                 """.strip()
                 print(msg)
 
-    # TODO: test
     if arg_namespace.version:
         from importlib.metadata import version
         v = version("docstorage")

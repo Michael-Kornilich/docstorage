@@ -26,8 +26,6 @@ class Config:
 
         Path.mkdir(config_path, parents=True, exist_ok=True)
         self.configpath = config_path / "config.json"
-        if self.configpath.exists():
-            return
 
         if self.env == "dev":
             config = {
@@ -43,12 +41,23 @@ class Config:
                 print(f"Documents path not found ({err}). Defaulting to home directory.")
                 landing_path = Path.home()
 
-            config = {
+            # TODO: test
+            config = dict()
+
+            incumbent_config = dict()
+            if self.configpath.exists():
+                with open(str(self.configpath), "r") as f:
+                    incumbent_config = json.load(f)
+
+            default_config = {
                 "db-path": str(user_data_path("docstorage").joinpath("./volume/index/index.sqlite").resolve()),
                 "storage-path": str(user_data_path("docstorage").joinpath("./volume/storage")),
                 "landing-directory": str(landing_path / "docstorage-landing"),
                 "delete-original": "False",
             }
+
+            for k, v in default_config.items():
+                config[k] = incumbent_config.get(k, default_config[k])
 
         with open(self.configpath, "w") as f:
             json.dump(config, f)
