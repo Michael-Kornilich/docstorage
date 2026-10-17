@@ -1,4 +1,5 @@
 """Database- and storage-related functions"""
+import json
 import sqlite3
 import shutil
 from docstorage.utility import DateInterval
@@ -6,6 +7,7 @@ from docstorage.config import Config
 from pathlib import Path
 from datetime import date
 from typing import Sequence, Any
+from docstorage.utility import freeze
 from contextlib import contextmanager
 
 
@@ -320,7 +322,8 @@ def fetch_file_set(
         name,
         description,
         date_created,
-        date_added
+        date_added,
+        tuple[tags]
     """
     config = Config()
     DB_PATH, STORAGE_PATH = Path(config["db-path"]), Path(config["storage-path"])
@@ -331,19 +334,29 @@ def fetch_file_set(
     with sqlite3.connect(DB_PATH) as con:
         res = con.execute(f"""
         SELECT  
-            id,
+            "index".id,
             sha256,
             name,
             description,
             date_created,
-            date_added
+            date_added,
+            json_group_array("tags".tag)
+                FILTER (WHERE "tags".tag IS NOT NULL) AS tags
         FROM "index"
-        WHERE id in ({", ".join(ids)})
+        LEFT JOIN "tags" ON "index".id = "tags".id
+        WHERE "index".id in ({", ".join(ids)})
+        GROUP BY 1, 2, 3, 4, 5, 6
         """)
         files_to_fetch = res.fetchall()
+        temp = []
+        for *o, t in files_to_fetch:
+            other = [str(i) for i in o]
+            _tags = [str(i) for i in json.loads(t)]
+            other.append(_tags)
+            temp.append(other)
+        files_to_fetch = freeze(temp)
 
     if dry_run:
-        files_to_fetch = tuple(tuple(map(str, row)) for row in files_to_fetch)
         return files_to_fetch
 
     if not Path(config["landing-directory"]).exists():

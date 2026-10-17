@@ -320,7 +320,8 @@ class TestFetch:
 
     def test_dry_run(self, setup_populated_storage):
         out = fetch_file_set(id_=1, dry_run=True)
-        assert all(isinstance(i, str) for row in out for i in row)
+        assert all(isinstance(i, str) for row in out[:-1] for i in row)
+        assert isinstance(out[-1], tuple)
         assert out is not None
         assert get_storage_len() == 3
         assert get_index_len() == 3

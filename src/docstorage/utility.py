@@ -1,5 +1,6 @@
 from datetime import date
 from dataclasses import dataclass
+from typing import Iterable
 
 
 @dataclass(frozen=True)
@@ -44,3 +45,13 @@ class DateInterval:
             return True
 
         return False
+
+
+def freeze(it: Iterable, /):
+    """Recursively turns lists and sets into tuples"""
+    res = []
+    for i in it:
+        if hasattr(i, "__iter__") and not isinstance(i, str):
+            i = freeze(i)
+        res.append(i)
+    return tuple(res)
